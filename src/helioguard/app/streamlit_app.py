@@ -35,20 +35,16 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-# --- make `helioguard` importable when run via `streamlit run ...` -------
 ROOT = Path(__file__).resolve().parents[3]
 SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from helioguard.config import DATA_DIR  # noqa: E402
-from helioguard.features import DEFAULT_DRIVERS, FeaturePipeline  # noqa: E402
+from helioguard.config import DATA_DIR
+from helioguard.features import DEFAULT_DRIVERS, FeaturePipeline
 
 BUNDLE_PATH = ROOT / "mlartifacts" / "helioguard_pipeline.joblib"
 
-# Sliders we expose in scenario mode, with (label, min, max, default, unit).
-# These are the physically dominant drivers; everything else falls back to
-# the training-set median through the fitted imputer.
 SCENARIO_DRIVERS = {
     "Bz_gsm": ("IMF Bz (GSM)", -30.0, 30.0, -5.0, "nT"),
     "flow_speed": ("Solar-wind speed", 250.0, 1000.0, 450.0, "km/s"),
@@ -58,9 +54,6 @@ SCENARIO_DRIVERS = {
 }
 
 
-# =========================================================================
-# Loading
-# =========================================================================
 @st.cache_resource
 def load_bundle() -> dict:
     """Load and cache the serialised pipeline bundle."""
@@ -87,9 +80,6 @@ def score_probability(_bundle: dict, feature_row: pd.DataFrame) -> float:
     return float(_bundle["calibrator"].transform(p_raw)[0])
 
 
-# =========================================================================
-# Feature-row construction
-# =========================================================================
 def scenario_feature_row(bundle: dict, scenario: dict, doy: int) -> pd.DataFrame:
     """Approximate feature row from daily-mean driver values.
 
@@ -106,11 +96,10 @@ def scenario_feature_row(bundle: dict, scenario: dict, doy: int) -> pd.DataFrame
             if col.startswith(f"{driver}_lag") or col.startswith(f"{driver}_rmean"):
                 row[col] = value
 
-    # Storm-phase dummies from the Dst slider (mirrors features._storm_phase).
     dst = scenario.get("Dst", 0.0)
     for col, on in (
         ("phase_quiet", dst > -30),
-        ("phase_main", dst <= -30),       # assume deepening for a what-if
+        ("phase_main", dst <= -30),
         ("phase_recovery", False),
     ):
         if col in row.index:
@@ -137,7 +126,7 @@ def historical_feature_row(_bundle: dict, date: pd.Timestamp) -> pd.DataFrame | 
 
     year = date.year
     try:
-        omni = load_omni(years=[year - 1, year])  # need prior year for lags
+        omni = load_omni(years=[year - 1, year])
     except FileNotFoundError:
         return None
 
@@ -146,17 +135,12 @@ def historical_feature_row(_bundle: dict, date: pd.Timestamp) -> pd.DataFrame | 
     pipe.scaler_ = _bundle["scaler"]
     pipe.feature_names_ = _bundle["feature_names"]
 
-    # Daily features are built internally; we ask for just our target day.
     daily = pipe._build_daily(omni)
     if date.normalize() not in daily.index:
         return None
-    # Return the raw (un-scaled) engineered row; score_probability scales it.
     return daily.loc[[date.normalize()], _bundle["feature_names"]]
 
 
-# =========================================================================
-# Decision + gauge
-# =========================================================================
 def decide(p: float, margin: float) -> tuple[str, str]:
     """Map a probability to a decision string + colour, given the margin."""
     if abs(p - 0.5) < margin:
@@ -192,9 +176,6 @@ def probability_gauge(p: float, margin: float) -> go.Figure:
     return fig
 
 
-# =========================================================================
-# Layout
-# =========================================================================
 def main() -> None:
     st.set_page_config(page_title="HelioGuard", page_icon="🛰️", layout="centered")
     st.title("🛰️ HelioGuard")
@@ -239,7 +220,7 @@ def main() -> None:
         st.subheader("Pick a day inside the OMNI coverage window")
         date = st.date_input(
             "Date (UTC)",
-            value=pd.Timestamp("1989-03-13"),  # the Quebec storm
+            value=pd.Timestamp("1989-03-13"),
             min_value=pd.Timestamp("1974-01-02"),
             max_value=pd.Timestamp("1994-09-11"),
         )
@@ -254,7 +235,6 @@ def main() -> None:
             st.stop()
         st.caption(f"Scoring the real solar-wind state of {date.date()}.")
 
-    # --- score + display ------------------------------------------------
     p = score_probability(bundle, row)
     decision, colour = decide(p, margin)
 

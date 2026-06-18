@@ -95,8 +95,7 @@ helioguard/
 │   └── test_parsers.py
 │
 ├── docs/
-│   ├── serving.md              ← how to load the joblib pipeline and score new days
-│   └── WALKTHROUGH.md          ← plain-language tour of every file
+│   └── serving.md              ← how to load the joblib pipeline and score new days
 │
 ├── Makefile                    ← `make data | test | mlflow-ui | clean`
 ├── requirements.txt
@@ -137,8 +136,7 @@ next-day anomaly probability for either a historical date (rigorous,
 rebuilds the real feature vector) or a what-if slider scenario. It
 shows the probability, the confidence margin, and the abstain/alert
 decision using the same abstention threshold selected in §10 of the
-notebook. A plain-language tour of every file is in
-[`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md).
+notebook.
 
 Total runtime end-to-end is under five minutes on a modern laptop
 (dominated by the gradient-boosting fit and the Isomap projection).
@@ -159,31 +157,43 @@ Total runtime end-to-end is under five minutes on a modern laptop
 
 ## Key results
 
-| Fold | Model | TSS | HSS | ROC-AUC | Brier | ECE |
-|------|-------|-----|-----|---------|-------|-----|
-| val  | persistence | 0.642 | 0.642 | — | — | — |
-| val  | calibrated logit | 0.018 | 0.033 | 0.63 | — | — |
-| **test (locked)** | persistence | 0.374 | 0.374 | — | 0.093 | 0.093 |
-| **test (locked)** | climatology | 0.000 | 0.000 | 0.500 | 0.086 | 0.108 |
-| **test (locked)** | **GradientBoosting + isotonic** | 0.077 | 0.108 | **0.671** | 0.086 | 0.108 |
+**Locked 1992–1994 test fold:**
 
-The headline finding is the contingency between these rows:
+| Model | TSS | ROC-AUC | Brier | ECE |
+|-------|-----|---------|-------|-----|
+| persistence | 0.374 | — | 0.093 | 0.093 |
+| climatology | 0.000 | 0.500 | 0.086 | 0.108 |
+| **RandomForest + isotonic** | **0.177** | **0.678** | 0.092 | 0.116 |
 
-1. Persistence beats the model at the 0.5 decision threshold (TSS
-   0.374 vs 0.077) because environmental-anomaly days cluster
-   temporally — a multi-day storm produces several anomalies in a row.
-2. The calibrated model has materially stronger *ranking* (test
-   ROC-AUC 0.671) than persistence (which has none — it is a binary
-   forecast) and matches the climatology Brier of 0.086, which is the
-   irreducible Bayes floor on this base rate.
-3. Calibration is achievable: isotonic recalibration on the validation
-   fold drops ECE from 0.149 (raw) to 0.110.
+**The threshold is the dial, and accuracy is a trap** — same model,
+different operating point on the same locked test fold:
 
-A well-calibrated model on a ~8 % positive class will almost never
-cross 0.5. That is not a defect — it is the consequence of *being
-calibrated*. The §10 risk-coverage curve is the right deliverable for
-this kind of model, not a single-threshold confusion matrix. See §12
-of the notebook for full discussion.
+| Operating point | Accuracy | Recall | Precision | TSS |
+|-----------------|----------|--------|-----------|-----|
+| threshold 0.5 | 90.6 % | 10.0 % | 27.6 % | 0.077 |
+| tuned t\* = 0.13 (val-selected) | 41.1 % | 80.0 % | 10.2 % | 0.177 |
+| always "no anomaly" | 91.9 % | 0.0 % | 0.0 % | 0.000 |
+
+The headline findings:
+
+1. **Accuracy is meaningless here.** A model that never alerts scores
+   91.9 % accuracy — higher than the trained model at threshold 0.5.
+   Accuracy is maximised by doing nothing, so it is the wrong objective.
+2. **Tuning the threshold on validation** (never on test) to t\* = 0.13
+   roughly doubles TSS (0.077 → 0.177) and lifts recall to 80 %, but
+   *lowers* accuracy to 41 % — catching rare anomalies necessarily
+   means accepting false alarms. There is no operating point with both
+   high accuracy and high recall on this data.
+3. **The model ranks weakly but honestly** (ROC-AUC 0.678 vs 0.5
+   random) and its probabilities are calibrated (ECE drops from 0.149
+   raw to ~0.11 after isotonic). Persistence still beats it on raw TSS
+   because anomaly days cluster temporally — but persistence cannot
+   produce a probability or abstain, which the calibrated model can.
+
+This modest-but-honest result *is* the contribution: OMNI-only daily
+inputs support calibrated probabilities and a recall/precision trade-off
+dial, not a high-accuracy forecast. See §12 of the notebook for the full
+"honest null" discussion.
 
 ### Figures
 

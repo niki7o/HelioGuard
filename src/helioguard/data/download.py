@@ -36,13 +36,9 @@ from helioguard.config import (
 logger = logging.getLogger(__name__)
 
 
-# --- Defaults -------------------------------------------------------------
-# The NCEI bulk anomaly catalogue covers 1986–1996. We grab a slightly wider
-# OMNI window so that lag features at the edges still have valid history.
 DEFAULT_YEARS: tuple[int, ...] = tuple(range(1985, 1998))
 
 
-# --- Helpers --------------------------------------------------------------
 def _download(url: str, dest: Path, timeout: float = 60.0) -> Path:
     """Download ``url`` to ``dest`` unless ``dest`` already exists non-empty.
 
@@ -59,7 +55,7 @@ def _download(url: str, dest: Path, timeout: float = 60.0) -> Path:
     try:
         with urllib.request.urlopen(url, timeout=timeout) as resp:
             tmp.write_bytes(resp.read())
-    except Exception as exc:  # noqa: BLE001 — re-raised below with context
+    except Exception as exc:
         if tmp.exists():
             tmp.unlink()
         raise RuntimeError(f"failed to download {url}: {exc}") from exc
@@ -68,7 +64,6 @@ def _download(url: str, dest: Path, timeout: float = 60.0) -> Path:
     return dest
 
 
-# --- Public API -----------------------------------------------------------
 def download_omni_year(year: int, raw_dir: Path = RAW_DIR) -> Path:
     """Download a single year of OMNI2 hourly data."""
     fname = f"omni2_{year}.dat"
@@ -105,7 +100,6 @@ def download_all(years: Iterable[int] = DEFAULT_YEARS) -> dict[str, list[Path]]:
     }
 
 
-# --- CLI ------------------------------------------------------------------
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Download HelioGuard raw data.")
     p.add_argument(

@@ -41,7 +41,6 @@ def _parse_one_year(path: Path) -> pd.DataFrame:
         names=OMNI2_COLUMNS,
         engine="python",
     )
-    # Build a UTC timestamp. doy is 1-indexed; hour is 0–23.
     df["timestamp"] = (
         pd.to_datetime(df["year"].astype(int).astype(str), format="%Y", utc=True)
         + pd.to_timedelta(df["doy"].astype(int) - 1, unit="D")
@@ -101,7 +100,6 @@ def load_omni(
     df = _apply_fill_values(df)
     df = _decode_kp(df)
     df = df.set_index("timestamp").sort_index()
-    # Drop fully-empty rows (rare but possible at file boundaries).
     df = df.dropna(how="all")
     logger.info(
         "OMNI loaded: %d rows, range %s -> %s",

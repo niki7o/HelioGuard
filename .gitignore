@@ -38,3 +38,6 @@ mlartifacts/
 # Build
 build/
 dist/
+
+# Personal / local-only notes (kept on disk, not published)
+docs/WALKTHROUGH.md

@@ -307,12 +307,21 @@ odds); the expected sign of the speed coefficient is **positive**.
 
 ### 4.2 Mechanism behind H₂
 
-The two charging classes have different timescales. ESD is driven by
-substorm-injected keV electrons during the **main phase**, which is
-short (hours) and intense. ECEMP is driven by penetrating
-MeV "killer" electrons that take days to build up in the outer
-radiation belt during the long **recovery phase**. We therefore
+The two charging classes have different timescales. ESD (surface
+charging) is driven by substorm-injected keV electrons during the
+**main phase**, which is short (hours) and intense. ECEMP — the NCEI
+diagnosis code for internal / deep-dielectric charging — is driven by
+penetrating MeV "killer" electrons that take days to build up in the
+outer radiation belt during the long **recovery phase**. We therefore
 expect the two diagnoses to peak in *different* storm phases.
+
+A storm "phase" here is a deliberately crude proxy derived from Dst:
+the **main phase** is taken as $\\text{Dst} \\leq -30$ nT with Dst still
+falling, **recovery** as $\\text{Dst} \\leq -30$ nT with Dst rising. The
+$-30$ nT cut is permissive — Gonzalez et al. (1994) reserve "moderate"
+for $\\text{Dst} < -50$ nT and "intense" for $< -100$ nT — so this flags
+weak activity too. It is a phase *indicator*, not a storm definition,
+and is justified only by needing a coarse main-vs-recovery split.
 
 ### 4.3 Caveat on H₃ wording
 
@@ -459,12 +468,15 @@ non-negotiable skill floors.
 ### 6.1 Regression: predicting daily-minimum Dst
 
 The regression target is the **daily minimum of Dst** — the depth of
-the ring current on that day. Dst-min is the classical Burton et al.
-(1975) regression target: continuous, physically meaningful (more
-negative = stronger storm), and well-explained by lagged solar-wind
-drivers. It is used here instead of the daily anomaly *count* because
-the count is mostly $0$ or $1$ on a sub-10 % positive class, which is
-too sparse for a robust regressor like RANSAC to find a valid
+the ring current on that day. Predicting ring-current intensity from
+solar-wind drivers follows the lineage of Burton et al. (1975), whose
+coupling function related $\\mathrm{d}\\text{Dst}^\\*/\\mathrm{d}t$ to the
+solar-wind electric field. We do **not** reproduce their differential
+formulation; we adapt the idea to a daily-minimum-Dst regression on
+lagged drivers, which is continuous and physically meaningful (more
+negative = stronger storm). It is used instead of the daily anomaly
+*count* because the count is mostly $0$ or $1$ on a sub-10 % positive
+class — too sparse for a robust regressor like RANSAC to find a valid
 consensus set.
 
 Six regressors are compared on the val fold:
@@ -1070,6 +1082,18 @@ persistence does not — and you cannot abstain with persistence".
 
 ### Specific caveats worth naming
 
+* **Orbit types are pooled.** The NCEI catalogue spans geostationary,
+  inclined, polar, and elliptical spacecraft, and we collapse them all
+  into one `any_environmental` label. This is a real simplification:
+  **surface charging (ESD) is predominantly a geosynchronous
+  phenomenon** — it happens where substorms inject hot keV plasma near
+  GEO — whereas SEU affects low and high-inclination orbits via cosmic
+  rays and the South Atlantic Anomaly. By pooling orbits we model a
+  *heterogeneous* mixture of mechanisms against a single solar-wind
+  driver set, which weakens any single physical interpretation. A
+  sharper version of this project would filter to GEO (`ORBIT == 'G'`)
+  for the ESD analysis specifically; we keep all orbits here to retain
+  sample size and state the trade-off honestly.
 * **NCEI catalogue reporting drift.** The catalogue was assembled in
   the early 1990s; later events have had less time to accumulate
   retrospective entries. The train/val/test base rates fall from
@@ -1102,15 +1126,16 @@ persistence does not — and you cannot abstain with persistence".
 1. Bloomfield, D. S., Higgins, P. A., McAteer, R. T. J., & Gallagher, P. T. (2012). Toward Reliable Benchmarking of Solar Flare Forecasting Methods. *Astrophysical Journal Letters*, 747, L41.
 2. Burton, R. K., McPherron, R. L., & Russell, C. T. (1975). An empirical relationship between interplanetary conditions and Dst. *Journal of Geophysical Research*, 80(31), 4204–4214.
 3. Camporeale, E., & Berger, T. (2025). The Status and Future of Operational Space Weather Forecasting. *Space Weather*, 23.
-4. Figueroa Herrera Acevedo, M., & Sierra Porta, D. (2025). Geomagnetic disturbances and grid vulnerability. *PLOS ONE*, 20(7), e0327716. doi:10.1371/journal.pone.0327716
-5. Rodriguez, J. V., O'Brien, T. P., & Whittlesey, P. L. (2025). Solar Wind and Magnetospheric Conditions for Satellite Anomalies Attributed to Shallow Internal Charging. *Space Weather*, 23. doi:10.1029/2024SW004112
-6. Angryk, R. et al. (2020). Multivariate time series dataset for space weather data analytics. *Scientific Data*, 7, 227.
-7. King, J. H., & Papitashvili, N. E. (2005). Solar wind spatial scales in and comparisons of hourly Wind and ACE plasma and magnetic field data. *Journal of Geophysical Research*, 110, A02104.
-8. Platt, J. (1999). Probabilistic Outputs for Support Vector Machines and Comparisons to Regularized Likelihood Methods. *Advances in Large Margin Classifiers*, MIT Press.
-9. Zadrozny, B., & Elkan, C. (2002). Transforming Classifier Scores into Accurate Multiclass Probability Estimates. *KDD '02*.
-10. Vovk, V., Gammerman, A., & Shafer, G. (2005). *Algorithmic Learning in a Random World*. Springer. — split conformal prediction.
-11. NASA OMNI documentation: https://omniweb.gsfc.nasa.gov/html/ow_data.html
-12. NOAA NCEI Spacecraft Anomalies: https://www.ngdc.noaa.gov/stp/space-weather/satellite-data/
+4. Gonzalez, W. D. et al. (1994). What is a geomagnetic storm? *Journal of Geophysical Research*, 99(A4), 5771–5792. — storm intensity thresholds (Dst < −50 moderate, < −100 intense).
+5. Figueroa Herrera Acevedo, M., & Sierra Porta, D. (2025). Geomagnetic disturbances and grid vulnerability. *PLOS ONE*, 20(7), e0327716. doi:10.1371/journal.pone.0327716
+6. Rodriguez, J. V., O'Brien, T. P., & Whittlesey, P. L. (2025). Solar Wind and Magnetospheric Conditions for Satellite Anomalies Attributed to Shallow Internal Charging. *Space Weather*, 23. doi:10.1029/2024SW004112
+7. Angryk, R. et al. (2020). Multivariate time series dataset for space weather data analytics. *Scientific Data*, 7, 227.
+8. King, J. H., & Papitashvili, N. E. (2005). Solar wind spatial scales in and comparisons of hourly Wind and ACE plasma and magnetic field data. *Journal of Geophysical Research*, 110, A02104.
+9. Platt, J. (1999). Probabilistic Outputs for Support Vector Machines and Comparisons to Regularized Likelihood Methods. *Advances in Large Margin Classifiers*, MIT Press.
+10. Zadrozny, B., & Elkan, C. (2002). Transforming Classifier Scores into Accurate Multiclass Probability Estimates. *KDD '02*.
+11. Vovk, V., Gammerman, A., & Shafer, G. (2005). *Algorithmic Learning in a Random World*. Springer. — split conformal prediction.
+12. NASA OMNI documentation: https://omniweb.gsfc.nasa.gov/html/ow_data.html
+13. NOAA NCEI Spacecraft Anomalies: https://www.ncei.noaa.gov/products/satellite-anomalies
 
 Code licence: MIT. Raw data is U.S. Government public domain
 (NASA / NOAA).

@@ -73,32 +73,23 @@ def load_ncei_anomalies(
             f"{path} not found. Run `python -m helioguard.data.download` first."
         )
 
-    # xlrd emits a noisy but harmless OLE2 warning on this legacy file.
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         df = pd.read_excel(path, engine="xlrd")
     logger.info("NCEI loaded: %d rows, %d cols", *df.shape)
 
-    # --- Types ----------------------------------------------------------
-    # ADATE is the real anomaly date; EDATE is the catalog-entry batch
-    # date and would corrupt any time-aware join (see module docstring).
     df["anomaly_date"] = pd.to_datetime(df["ADATE"], errors="coerce")
     df["catalog_entry_date"] = pd.to_datetime(df["EDATE"], errors="coerce")
     df = df.dropna(subset=["anomaly_date"])
 
-    # STIMEU is HHMM as an integer; 9999 is the documented missing flag.
     df["stimeu"] = df["STIMEU"].where(df["STIMEU"] != 9999)
 
-    # Strip and upper-case all string columns; also drop the leading ``@``
-    # that NCEI uses to mark anonymised / proprietary spacecraft names so
-    # that downstream group-by ops are clean.
     for col in ("BIRD", "ORBIT", "NS", "EW", "ATYPE", "ADIAG"):
         if col in df.columns:
             df[col] = (
                 df[col].astype("string").str.strip().str.lstrip("@").str.upper()
             )
 
-    # --- Derived flags --------------------------------------------------
     environmental = {"ESD", "ECEMP", "SEU"}
     df["is_environmental"] = df["ADIAG"].isin(environmental)
 
@@ -148,7 +139,6 @@ def daily_anomaly_counts(
         .to_frame()
     )
 
-    # Per-diagnosis counts (use the *unfiltered* df so columns are stable).
     diag = df.assign(date=df.index.normalize())
     counts = diag.pivot_table(
         index="date",

@@ -1,0 +1,6 @@
+outs:
+- md5: d5ac63ea2598c3aee1ea10576807c070.dir
+  size: 63251520
+  nfiles: 23
+  hash: md5
+  path: omni

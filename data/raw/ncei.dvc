@@ -1,0 +1,6 @@
+outs:
+- md5: 91784db39787ef1daaccc797406d5f51.dir
+  size: 2718208
+  nfiles: 2
+  hash: md5
+  path: ncei

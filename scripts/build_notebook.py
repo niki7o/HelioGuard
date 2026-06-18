@@ -639,9 +639,15 @@ setup_mlflow('helioguard-supervised')
 mlflow.sklearn.autolog(silent=True)
 
 tscv = TimeSeriesSplit(n_splits=5)
+# class_weight='balanced' tells SVM and the forest to up-weight the rare
+# positive class, so they are less inclined to collapse to "predict no
+# anomaly". GradientBoosting has no class_weight argument in scikit-learn,
+# so it stays unweighted — we let it compete on equal footing.
 models = {
-    'SVM (RBF)':         SVC(C=1.0, gamma='scale', probability=True, random_state=RANDOM_STATE),
+    'SVM (RBF)':         SVC(C=1.0, gamma='scale', probability=True,
+                             class_weight='balanced', random_state=RANDOM_STATE),
     'RandomForest':      RandomForestClassifier(n_estimators=300, max_depth=None,
+                                                class_weight='balanced',
                                                 n_jobs=-1, random_state=RANDOM_STATE),
     'GradientBoosting':  GradientBoostingClassifier(n_estimators=200, max_depth=3,
                                                     random_state=RANDOM_STATE),
@@ -881,7 +887,19 @@ final_iso   = IsotonicRegression(out_of_bounds='clip').fit(
 
 p_test_raw = final_model.predict_proba(X_test)[:, 1]
 p_test     = final_iso.transform(p_test_raw)
-yhat_test  = (p_test >= 0.5).astype(int)
+
+# Tune the decision threshold on the VALIDATION fold (never the test fold),
+# choosing the t that maximises TSS. The default 0.5 is the wrong operating
+# point for a calibrated rare-event model; t* trades some precision for the
+# recall an operator actually needs. Selecting on val and applying once to
+# test keeps the protocol leakage-free.
+p_val = final_iso.transform(final_model.predict_proba(X_val)[:, 1])
+grid = np.linspace(0.05, 0.95, 91)
+t_star = float(grid[np.argmax([tss(y_val, (p_val >= t).astype(int)) for t in grid])])
+
+yhat_test    = (p_test >= t_star).astype(int)   # tuned operating point
+yhat_test_05 = (p_test >= 0.5).astype(int)       # naive 0.5 for comparison
+print(f'Validation-tuned threshold t* = {t_star:.3f}  (vs naive 0.5)')
 
 # Persistence baseline on the SAME test fold — apples-to-apples.
 pers_test = (
@@ -889,6 +907,7 @@ pers_test = (
     .loc[X_test.index].fillna(0).astype(int).values
 )
 clim_p_test = float(y_train.mean())  # train base rate
+model_label = f'{best_name}+iso (t*={t_star:.2f})'
 
 test_metrics = pd.DataFrame({
     'persistence': {
@@ -906,7 +925,7 @@ test_metrics = pd.DataFrame({
         'ECE':   expected_calibration_error(
             y_test, np.full_like(y_test, clim_p_test, dtype=float), 10),
     },
-    f'{best_name} + isotonic': {
+    model_label: {
         'TSS':    tss(y_test, yhat_test),
         'HSS':    hss(y_test, yhat_test),
         'ROC-AUC': roc_auc_score(y_test, p_test),
@@ -916,6 +935,42 @@ test_metrics = pd.DataFrame({
     },
 }).T.round(3)
 test_metrics
+"""),
+    md("""### 10.2 Threshold matters more than "accuracy"
+
+The table below makes the rare-event trap explicit. It compares the
+naive 0.5 threshold, the validation-tuned threshold $t^\\*$, and the
+trivial *always-predict-no-anomaly* rule — on the locked test fold.
+Watch what happens to accuracy versus recall: lowering the threshold to
+catch real anomalies **lowers** accuracy (more false alarms) while
+**raising** TSS and recall. Accuracy is the wrong objective here;
+a model that maximises it would simply never raise an alert.
+"""),
+    code("""from sklearn.metrics import (accuracy_score, recall_score,
+                             precision_score, confusion_matrix)
+
+def op_row(yhat):
+    return {
+        'accuracy':  accuracy_score(y_test, yhat),
+        'recall':    recall_score(y_test, yhat, zero_division=0),
+        'precision': precision_score(y_test, yhat, zero_division=0),
+        'TSS':       tss(y_test, yhat),
+        'alerts':    int(yhat.sum()),
+    }
+
+always_no = np.zeros_like(y_test)
+ops = pd.DataFrame({
+    'threshold 0.5':        op_row(yhat_test_05),
+    f'tuned t*={t_star:.2f}': op_row(yhat_test),
+    'always "no anomaly"':  op_row(always_no),
+}).T
+ops['accuracy'] = ops['accuracy'].map('{:.1%}'.format)
+ops['recall'] = ops['recall'].map('{:.1%}'.format)
+ops['precision'] = ops['precision'].map('{:.1%}'.format)
+ops['TSS'] = ops['TSS'].map('{:.3f}'.format)
+print('Confusion matrix at tuned t* [rows=true, cols=pred]:')
+print(confusion_matrix(y_test, yhat_test, labels=[0, 1]))
+ops
 """),
     code("""from helioguard.metrics import risk_coverage_curve
 from helioguard.plots import risk_coverage_plot
@@ -936,15 +991,15 @@ m_star = float(margins[best_i])
 cov_star = float(coverage[best_i])
 tss_star = float(tss_arr[best_i])
 
-print(f'Full-coverage TSS         : {test_metrics.loc[f\"{best_name} + isotonic\", \"TSS\"]:.3f}')
+print(f'Full-coverage TSS (t=0.5) : {tss(y_test, yhat_test_05):.3f}')
 print(f'Selected abstention margin: m* = {m_star:.3f}')
 print(f'  coverage at m*          : {cov_star:.1%} of test days')
 print(f'  TSS on covered subset   : {tss_star:.3f}')
 """),
     code("""ax = risk_coverage_plot(y_test.values, p_test, score='tss',
                         label=f'{best_name} + isotonic', title='Risk–coverage (locked test)')
-full_tss = test_metrics.loc[f'{best_name} + isotonic', 'TSS']
-ax.axhline(full_tss, color='gray', linestyle=':', label='TSS @ 100% coverage')
+full_tss = tss(y_test, yhat_test_05)
+ax.axhline(full_tss, color='gray', linestyle=':', label='TSS @ 100% coverage (t=0.5)')
 ax.scatter([cov_star], [tss_star], color='crimson', zorder=5, s=60,
            label=f'm*={m_star:.2f}  (cov {cov_star:.0%}, TSS {tss_star:.2f})')
 ax.axvline(MIN_COVERAGE, color='steelblue', linestyle='--', alpha=0.4,
@@ -996,7 +1051,7 @@ dump({'model': final_model, 'calibrator': final_iso,
 # 2. Log a run that (a) registers the sklearn estimator under the name
 #    `helioguard-anomaly`, and (b) attaches the joblib bundle + the
 #    selected abstention margin + the locked-test metrics.
-model_row = test_metrics.loc[f'{best_name} + isotonic'].dropna()
+model_row = test_metrics.loc[model_label].dropna()
 signature = infer_signature(X_test, final_model.predict_proba(X_test)[:, 1])
 
 REGISTERED_NAME = 'helioguard-anomaly'
@@ -1048,16 +1103,21 @@ headline finding:
   temporally — a multi-day storm produces several anomalies in a row —
   so the persistence forecast gets a lot of TSS for free. Any
   data-driven model has to *beat persistence*, not just climatology.
-* **The calibrated gradient-boosted model** has materially stronger
-  *ranking* than persistence (ROC-AUC ≈ 0.67 vs an undefined AUC for
-  a binary forecast). Its probabilities are also well-calibrated
-  (Brier ≈ 0.086, ECE ≈ 0.108 — both close to the climatology Brier
-  of the test base rate, the irreducible Bayes floor).
-* **TSS at threshold 0.5** is small (≈ 0.08), because a well-calibrated
-  model on a ~8 % positive class will almost never cross 0.5. That is
-  not a model defect — it is the consequence of *being calibrated*. It
-  is also the precise reason §10 reports the **risk-coverage curve**
-  and not a single-threshold confusion matrix.
+* **The calibrated model** has materially stronger *ranking* than
+  persistence (ROC-AUC ≈ 0.68 vs an undefined AUC for a binary
+  forecast). Its probabilities are also well-calibrated (Brier ≈ 0.09,
+  ECE ≈ 0.11 — close to the climatology Brier of the test base rate,
+  the irreducible Bayes floor).
+* **The threshold is the real dial, and accuracy is a trap.** At the
+  naive 0.5 threshold the model is conservative: TSS ≈ 0.08, recall
+  10 %, but accuracy 91 % — *below* the trivial "always say no" rule
+  (92 %). Tuning the threshold on the validation fold to $t^\\* ≈ 0.13$
+  lifts TSS to ≈ 0.18 and recall to 80 %, at the cost of accuracy
+  falling to ≈ 41 % (many false alarms). There is **no operating point
+  with both high accuracy and high recall** on this data — accuracy is
+  maximised by never alerting, so it is the wrong objective. The honest
+  skill summary is ROC-AUC ≈ 0.68 and a tuned TSS ≈ 0.18, roughly
+  double the 0.5-threshold value but still modest.
 
 ### Why this is an "honest null" rather than a failure
 

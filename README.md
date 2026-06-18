@@ -4,7 +4,6 @@
 
 Author: Nikola Kolev
 Course: Machine Learning, SoftUni 2026
-Instructor: Yordan Darakchiev
 
 ---
 

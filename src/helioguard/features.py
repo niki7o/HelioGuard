@@ -29,20 +29,17 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
 
 
-# Columns we treat as the canonical OMNI driver set. Keeping the list
-# short and physically motivated makes the downstream interpretation
-# tractable; adding every OMNI field would gain almost nothing.
 DEFAULT_DRIVERS: tuple[str, ...] = (
-    "B_mag_avg",       # IMF magnitude
-    "Bz_gsm",          # north-south IMF — the single most important driver
-    "flow_speed",      # solar-wind bulk speed
-    "proton_density",  # solar-wind density
-    "flow_pressure",   # dynamic pressure
-    "Kp_real",         # planetary K index
-    "Dst",             # ring-current index
-    "AE",              # auroral electrojet
-    "F107",            # 10.7 cm radio flux (solar activity proxy)
-    "ap",              # 3-hour ap index
+    "B_mag_avg",
+    "Bz_gsm",
+    "flow_speed",
+    "proton_density",
+    "flow_pressure",
+    "Kp_real",
+    "Dst",
+    "AE",
+    "F107",
+    "ap",
 )
 
 DEFAULT_LAGS_HOURS: tuple[int, ...] = (1, 3, 6, 24)
@@ -158,7 +155,6 @@ class FeaturePipeline:
     scaler_: StandardScaler | None = field(default=None, init=False)
     feature_names_: list[str] = field(default_factory=list, init=False)
 
-    # --- internal -------------------------------------------------------
     def _build_daily(self, omni: pd.DataFrame) -> pd.DataFrame:
         """OMNI hourly → engineered daily features (no scaling yet)."""
         hourly = _hourly_lag_and_roll(omni, self.drivers, self.lags, self.rolls)
@@ -180,7 +176,6 @@ class FeaturePipeline:
         y = daily_labels.loc[keep, self.label_col].astype(int)
         return X, y
 
-    # --- public API -----------------------------------------------------
     def fit_transform(
         self,
         omni: pd.DataFrame,
@@ -214,7 +209,7 @@ class FeaturePipeline:
             raise RuntimeError("FeaturePipeline.transform called before fit_transform.")
         daily = self._build_daily(omni)
         X, y = self._align_label(daily, daily_labels, index)
-        X = X[self.feature_names_]  # enforce column order
+        X = X[self.feature_names_]
         X_imp = self.imputer_.transform(X)
         X_scl = self.scaler_.transform(X_imp)
         return (

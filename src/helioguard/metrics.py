@@ -25,7 +25,6 @@ import numpy as np
 from sklearn.metrics import confusion_matrix
 
 
-# --- contingency-table skill scores --------------------------------------
 def _contingency(y_true: np.ndarray, y_pred: np.ndarray) -> tuple[int, int, int, int]:
     cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
     tn, fp, fn, tp = cm.ravel()
@@ -52,7 +51,6 @@ def hss(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     return num / den if den > 0 else 0.0
 
 
-# --- probability-calibration metrics -------------------------------------
 def brier_score(y_true: np.ndarray, p: np.ndarray) -> float:
     """Mean squared error between predicted probability and outcome."""
     y_true = np.asarray(y_true, dtype=float)
@@ -66,9 +64,9 @@ class ReliabilityBins:
 
     bin_edges: np.ndarray
     bin_centres: np.ndarray
-    mean_predicted: np.ndarray  # mean predicted prob in each bin
-    fraction_positive: np.ndarray  # empirical positive rate in each bin
-    counts: np.ndarray  # number of samples per bin
+    mean_predicted: np.ndarray
+    fraction_positive: np.ndarray
+    counts: np.ndarray
 
 
 def reliability_bins(
@@ -83,8 +81,6 @@ def reliability_bins(
 
     edges = np.linspace(0.0, 1.0, n_bins + 1)
     centres = 0.5 * (edges[:-1] + edges[1:])
-    # np.digitize returns 1..n_bins for values inside the range;
-    # subtract 1 to get 0-indexed bin ids, clip the rightmost edge.
     bin_id = np.clip(np.digitize(p, edges, right=False) - 1, 0, n_bins - 1)
 
     mean_pred = np.zeros(n_bins)
@@ -122,7 +118,6 @@ def expected_calibration_error(
     return float(np.sum(rb.counts * gaps) / n)
 
 
-# --- selective prediction -------------------------------------------------
 def risk_coverage_curve(
     y_true: np.ndarray,
     p: np.ndarray,

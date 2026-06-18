@@ -95,8 +95,8 @@ helioguard/
 │   └── test_parsers.py
 │
 ├── docs/
-│   ├── COMMIT_PLAN.md          ← the ≥10 meaningful-commits map
-│   └── serving.md              ← how to load the joblib pipeline and score new days
+│   ├── serving.md              ← how to load the joblib pipeline and score new days
+│   └── WALKTHROUGH.md          ← plain-language tour of every file
 │
 ├── Makefile                    ← `make data | test | mlflow-ui | clean`
 ├── requirements.txt
@@ -150,7 +150,7 @@ Total runtime end-to-end is under five minutes on a modern laptop
 | Time index | UTC; OMNI hourly resampled to daily for the label join |
 | Splits | Chronological train / val / test, locked test set untouched until §10 |
 | Features | Lags at 1, 3, 6, 24 h and rolling mean+std over 6, 24 h windows on $B_z$, $v_{sw}$, $n_p$, $p_{dyn}$, Dst, AE, F10.7, ap; storm-phase dummies from Dst; cyclic day-of-year. Imputer + scaler fitted **on the train fold only**. |
-| Regression block | OLS, Ridge, Lasso, ElasticNet, Polynomial+Ridge, RANSAC on the Burton (1975) Dst-min target |
+| Regression block | OLS, Ridge, Lasso, ElasticNet, Polynomial+Ridge, RANSAC on a daily-min-Dst target (in the spirit of Burton 1975) |
 | Classification block | Persistence and climatology baselines; calibrated logistic regression; SVM (RBF), Random Forest, Gradient Boosting compared by chronological 5-fold TimeSeriesSplit ROC-AUC and validation TSS |
 | Unsupervised | PCA(3) + Isomap(2); K-means++, Agglomerative-Ward, DBSCAN compared by silhouette and pos-rate spread |
 | Calibration | Platt scaling, isotonic regression, split conformal — reliability diagram, Brier, ECE |

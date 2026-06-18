@@ -1,0 +1,40 @@
+# Raw and processed data — the data itself is tracked by DVC, not git;
+# the small *.dvc pointer files and .gitkeep markers ARE committed.
+data/raw/*
+data/interim/*
+data/processed/*
+!data/raw/.gitkeep
+!data/interim/.gitkeep
+!data/processed/.gitkeep
+!data/raw/*.dvc
+!data/interim/*.dvc
+!data/processed/*.dvc
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environments
+.venv/
+venv/
+env/
+
+# MLflow local store
+mlruns/
+mlartifacts/
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/
+
+# Build
+build/
+dist/

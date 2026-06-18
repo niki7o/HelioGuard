@@ -144,12 +144,20 @@ class FeaturePipeline:
     The imputer (median) and the scaler (z-score) are fitted *exclusively*
     on the training rows; validation and test rows pass through the
     fitted transformers without contributing to their parameters.
+
+    ``horizon_days`` sets the forecast lead time: with the default of 1,
+    the features of day T are aligned to the anomaly label of day T+1,
+    so the model is a genuine *next-day* forecast — the solar-wind state
+    up to the end of day T predicts whether day T+1 has an anomaly. The
+    feature windows are past-only, so there is a full day of lead time
+    between the latest input and the predicted day.
     """
 
     drivers: tuple[str, ...] = DEFAULT_DRIVERS
     lags: tuple[int, ...] = DEFAULT_LAGS_HOURS
     rolls: tuple[int, ...] = DEFAULT_ROLL_HOURS
     label_col: str = "any_environmental"
+    horizon_days: int = 1
 
     imputer_: SimpleImputer | None = field(default=None, init=False)
     scaler_: StandardScaler | None = field(default=None, init=False)
@@ -170,11 +178,13 @@ class FeaturePipeline:
         daily_labels: pd.DataFrame,
         index: pd.DatetimeIndex,
     ) -> tuple[pd.DataFrame, pd.Series]:
+        target = daily_labels[self.label_col].shift(-self.horizon_days)
         common = daily_features.index.intersection(daily_labels.index)
         keep = common.intersection(pd.DatetimeIndex(index))
         X = daily_features.loc[keep]
-        y = daily_labels.loc[keep, self.label_col].astype(int)
-        return X, y
+        y = target.loc[keep]
+        mask = y.notna()
+        return X.loc[mask], y[mask].astype(int)
 
     def fit_transform(
         self,

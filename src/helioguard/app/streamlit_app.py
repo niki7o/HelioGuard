@@ -181,8 +181,8 @@ def main() -> None:
     st.title("🛰️ HelioGuard")
     st.caption(
         "Calibrated next-day satellite-anomaly risk from solar-wind state. "
-        "Model: gradient boosting + isotonic calibration, evaluated on a "
-        "locked 1992–1994 test fold."
+        "Model: a calibrated tree ensemble selected on validation, "
+        "evaluated on a locked 1992–1994 test fold."
     )
 
     bundle = load_bundle()

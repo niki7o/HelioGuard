@@ -104,7 +104,7 @@ script as Python rather than diffing JSON.
 **Conventions.**
 
 * The headline operational metric is the **True Skill Statistic** $\\text{TSS} = \\text{TPR} - \\text{FPR}$ (Bloomfield et al. 2012), reported alongside HSS, ROC-AUC, PR-AUC, Brier, and ECE.
-* All scaling, imputation, hyperparameter choices, and clustering fits use the **training fold only**. The validation fold is used once to choose the headline model; the locked test fold is touched exactly once in §10.
+* All scaling, imputation, hyperparameter choices, and clustering fits use the **training fold only**. The validation fold is used to choose the headline model and the decision threshold; the locked test fold is touched exactly once, in §10.
 * Failing to reject a null hypothesis is reported as such, not as a "negative" result.
 """),
 
@@ -582,9 +582,12 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score, average_precision_score
 from helioguard.metrics import tss, hss
 
-# Persistence: yesterday's label = today's prediction.
-prev = daily_labels['any_environmental'].astype(int).shift(1)
-pers_val = prev.loc[X_val.index].fillna(0).astype(int).values
+# Persistence for a next-day forecast: predict T+1 using the latest
+# known label, which at decision time T is the label OF day T. The
+# feature rows are indexed by day T and the target y is the day-(T+1)
+# label, so persistence = the label at the feature day itself (no shift).
+lab = daily_labels['any_environmental'].astype(int)
+pers_val = lab.reindex(X_val.index).fillna(0).astype(int).values
 clim_p = float(y_train.mean())  # climatological probability
 
 # Calibrated logistic regression (sklearn's built-in CV calibration).
@@ -903,11 +906,14 @@ print(f'Validation-tuned threshold t* = {t_star:.3f}  (vs naive 0.5)')
 
 # Persistence baseline on the SAME test fold — apples-to-apples.
 pers_test = (
-    daily_labels['any_environmental'].astype(int).shift(1)
-    .loc[X_test.index].fillna(0).astype(int).values
+    daily_labels['any_environmental'].astype(int)
+    .reindex(X_test.index).fillna(0).astype(int).values
 )
 clim_p_test = float(y_train.mean())  # train base rate
-model_label = f'{best_name}+iso (t*={t_star:.2f})'
+# Headline operating point is the a-priori default threshold 0.5 (NOT a
+# value chosen on the test set). The validation-tuned t* is reported
+# separately in the operating-point table below.
+model_label = f'{best_name}+iso (t=0.5)'
 
 test_metrics = pd.DataFrame({
     'persistence': {
@@ -926,8 +932,8 @@ test_metrics = pd.DataFrame({
             y_test, np.full_like(y_test, clim_p_test, dtype=float), 10),
     },
     model_label: {
-        'TSS':    tss(y_test, yhat_test),
-        'HSS':    hss(y_test, yhat_test),
+        'TSS':    tss(y_test, yhat_test_05),
+        'HSS':    hss(y_test, yhat_test_05),
         'ROC-AUC': roc_auc_score(y_test, p_test),
         'PR-AUC':  average_precision_score(y_test, p_test),
         'Brier':  brier_score(y_test, p_test),
@@ -936,15 +942,28 @@ test_metrics = pd.DataFrame({
 }).T.round(3)
 test_metrics
 """),
-    md("""### 10.2 Threshold matters more than "accuracy"
+    md("""### 10.2 Accuracy is a trap, and the threshold does not transfer cleanly
 
-The table below makes the rare-event trap explicit. It compares the
-naive 0.5 threshold, the validation-tuned threshold $t^\\*$, and the
-trivial *always-predict-no-anomaly* rule — on the locked test fold.
-Watch what happens to accuracy versus recall: lowering the threshold to
-catch real anomalies **lowers** accuracy (more false alarms) while
-**raising** TSS and recall. Accuracy is the wrong objective here;
-a model that maximises it would simply never raise an alert.
+The table below compares three operating points on the locked test
+fold: the a-priori default threshold 0.5, the threshold $t^\\*$ chosen
+on the *validation* fold to maximise TSS, and the trivial
+*always-predict-no-anomaly* rule.
+
+Two honest lessons fall out:
+
+1. **Accuracy is the wrong objective.** "Always say no" scores ~92 %
+   accuracy — higher than the trained model — because the positive
+   class is rare. A model optimised for accuracy would simply never
+   raise an alert. That is why accuracy is reported here only to be
+   dismissed.
+2. **Threshold tuning overfits the validation fold.** Lowering the
+   threshold to $t^\\*$ does buy very high recall (≈ 89 %), but on the
+   *test* fold its TSS does **not** beat the plain 0.5 threshold — the
+   validation-optimal cut does not transfer. With a weak signal even a
+   single scalar (the threshold) can overfit. We therefore keep 0.5 as
+   the headline operating point and treat $t^\\*$ as a recall-oriented
+   alternative, not an improvement. This is a more honest reading than
+   claiming the tuning "helped".
 """),
     code("""from sklearn.metrics import (accuracy_score, recall_score,
                              precision_score, confusion_matrix)
@@ -1098,26 +1117,28 @@ headline number.
 The contingency between the three rows of the §10 table is the
 headline finding:
 
-* **Persistence** ("yesterday's label = today's prediction") is a
-  brutally strong baseline. Environmental-anomaly days cluster
-  temporally — a multi-day storm produces several anomalies in a row —
-  so the persistence forecast gets a lot of TSS for free. Any
-  data-driven model has to *beat persistence*, not just climatology.
+* **Persistence** ("tomorrow repeats today's label") is a brutally
+  strong baseline (test TSS ≈ 0.37). Environmental-anomaly
+  days cluster temporally — a multi-day storm produces several
+  anomalies in a row — so the persistence forecast gets a lot of TSS
+  for free. Any data-driven model has to *beat persistence*, not just
+  climatology, and on raw TSS this model does **not**.
 * **The calibrated model** has materially stronger *ranking* than
   persistence (ROC-AUC ≈ 0.68 vs an undefined AUC for a binary
-  forecast). Its probabilities are also well-calibrated (Brier ≈ 0.09,
-  ECE ≈ 0.11 — close to the climatology Brier of the test base rate,
-  the irreducible Bayes floor).
-* **The threshold is the real dial, and accuracy is a trap.** At the
-  naive 0.5 threshold the model is conservative: TSS ≈ 0.08, recall
-  10 %, but accuracy 91 % — *below* the trivial "always say no" rule
-  (92 %). Tuning the threshold on the validation fold to $t^\\* ≈ 0.13$
-  lifts TSS to ≈ 0.18 and recall to 80 %, at the cost of accuracy
-  falling to ≈ 41 % (many false alarms). There is **no operating point
-  with both high accuracy and high recall** on this data — accuracy is
-  maximised by never alerting, so it is the wrong objective. The honest
-  skill summary is ROC-AUC ≈ 0.68 and a tuned TSS ≈ 0.18, roughly
-  double the 0.5-threshold value but still modest.
+  forecast) and produces a probability persistence cannot. At the
+  default 0.5 threshold its next-day test TSS is ≈ 0.16 with accuracy
+  ≈ 88 %. Its probabilities are reasonably calibrated (Brier ≈ 0.09–0.11,
+  ECE ≈ 0.11–0.13).
+* **Accuracy is a trap, and the threshold does not transfer.** "Always
+  say no" scores ≈ 92 % accuracy — higher than the trained model —
+  because the positive class is rare, so accuracy is the wrong
+  objective. Lowering the threshold to the validation-optimal
+  $t^\\* ≈ 0.12$ buys very high recall (≈ 89 %) but, out-of-sample on
+  test, its TSS (≈ 0.10) does **not** beat the plain 0.5 threshold
+  (≈ 0.16): the validation-tuned cut overfits. With a weak signal even
+  a single scalar can fail to generalise. The honest skill summary is
+  ROC-AUC ≈ 0.68 with a default-threshold TSS ≈ 0.16 — modest, and
+  below persistence.
 
 ### Why this is an "honest null" rather than a failure
 
@@ -1127,10 +1148,10 @@ probabilities, and does **selective prediction** recover better
 operating performance on the confident subset?* Both halves of that
 question have empirical answers in this notebook:
 
-1. **Yes, calibration is achievable** (isotonic on val, ECE drops from
-   0.149 raw to 0.110 calibrated; same direction on test). The model
-   is genuinely usable as a probability source even when its
-   threshold-0.5 TSS is small.
+1. **Yes, calibration is achievable** (on val, ECE drops from ≈ 0.14
+   raw to ≈ 0.10 after Platt/isotonic; same direction on test). The
+   model is genuinely usable as a probability source even though its
+   TSS stays below persistence.
 2. **The risk-coverage curve is the deliverable that captures the
    operational trade-off** — not a single TSS number. A reader should
    look at where the curve starts to climb above its full-coverage

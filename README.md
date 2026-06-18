@@ -139,7 +139,7 @@ decision using the same abstention threshold selected in §10 of the
 notebook.
 
 Total runtime end-to-end is under five minutes on a modern laptop
-(dominated by the gradient-boosting fit and the Isomap projection).
+(dominated by the model fits and the Isomap projection).
 
 ## Methods
 
@@ -157,43 +157,48 @@ Total runtime end-to-end is under five minutes on a modern laptop
 
 ## Key results
 
-**Locked 1992–1994 test fold:**
+The task is a genuine **next-day** forecast: features from the
+solar-wind state up to the end of day *T* predict whether day *T+1*
+has an environmental anomaly.
+
+**Locked 1992–1994 test fold (default threshold 0.5):**
 
 | Model | TSS | ROC-AUC | Brier | ECE |
 |-------|-----|---------|-------|-----|
-| persistence | 0.374 | — | 0.093 | 0.093 |
+| persistence | **0.374** | — | 0.093 | 0.093 |
 | climatology | 0.000 | 0.500 | 0.086 | 0.108 |
-| **RandomForest + isotonic** | **0.177** | **0.678** | 0.092 | 0.116 |
+| RandomForest + isotonic | 0.161 | **0.682** | 0.106 | 0.129 |
 
-**The threshold is the dial, and accuracy is a trap** — same model,
-different operating point on the same locked test fold:
+**Accuracy is a trap, and the tuned threshold does not transfer** —
+same model, three operating points on the locked test fold:
 
 | Operating point | Accuracy | Recall | Precision | TSS |
 |-----------------|----------|--------|-----------|-----|
-| threshold 0.5 | 90.6 % | 10.0 % | 27.6 % | 0.077 |
-| tuned t\* = 0.13 (val-selected) | 41.1 % | 80.0 % | 10.2 % | 0.177 |
+| threshold 0.5 | 87.8 % | 22.5 % | 23.7 % | 0.161 |
+| tuned t\* = 0.12 (val-selected) | 27.1 % | 88.8 % | 9.1 % | 0.104 |
 | always "no anomaly" | 91.9 % | 0.0 % | 0.0 % | 0.000 |
 
 The headline findings:
 
 1. **Accuracy is meaningless here.** A model that never alerts scores
-   91.9 % accuracy — higher than the trained model at threshold 0.5.
-   Accuracy is maximised by doing nothing, so it is the wrong objective.
-2. **Tuning the threshold on validation** (never on test) to t\* = 0.13
-   roughly doubles TSS (0.077 → 0.177) and lifts recall to 80 %, but
-   *lowers* accuracy to 41 % — catching rare anomalies necessarily
-   means accepting false alarms. There is no operating point with both
-   high accuracy and high recall on this data.
-3. **The model ranks weakly but honestly** (ROC-AUC 0.678 vs 0.5
-   random) and its probabilities are calibrated (ECE drops from 0.149
-   raw to ~0.11 after isotonic). Persistence still beats it on raw TSS
-   because anomaly days cluster temporally — but persistence cannot
+   91.9 % accuracy — higher than the trained model. Accuracy is
+   maximised by doing nothing, so it is the wrong objective.
+2. **Threshold tuning overfits validation.** Lowering the threshold to
+   the validation-optimal t\* = 0.12 buys very high recall (89 %) but,
+   out-of-sample on test, its TSS (0.104) does *not* beat the plain 0.5
+   threshold (0.161). With a weak signal even a single scalar can fail
+   to generalise, so 0.5 is kept as the headline and t\* is reported as
+   a recall-oriented alternative, not an improvement.
+3. **The model ranks weakly but honestly** (ROC-AUC 0.682 vs 0.5
+   random) and its probabilities are calibrated (ECE drops from ~0.14
+   raw to ~0.10 after Platt/isotonic). **Persistence (TSS 0.374) beats
+   it** because anomaly days cluster temporally — but persistence cannot
    produce a probability or abstain, which the calibrated model can.
 
-This modest-but-honest result *is* the contribution: OMNI-only daily
-inputs support calibrated probabilities and a recall/precision trade-off
-dial, not a high-accuracy forecast. See §12 of the notebook for the full
-"honest null" discussion.
+This modest result — below persistence on raw skill, but calibrated and
+honest — *is* the contribution: OMNI-only daily inputs support
+calibrated next-day probabilities, not a high-skill forecast. See §12
+of the notebook for the full "honest null" discussion.
 
 ### Figures
 

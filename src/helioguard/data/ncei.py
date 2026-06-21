@@ -6,7 +6,7 @@ The raw file (``anom5j.xls``) is a legacy CDFV2 ``.xls`` workbook with
 
 .. important::
    **Data-audit finding (logged Day 1).** The intuitive-looking ``EDATE``
-   column is in fact the *catalog batch-entry date* — there are only 49
+   column is in fact the *catalog batch-entry date* - there are only 49
    distinct values, the largest single one (1994-01-19) carrying 883 events
    that span years of real history. The genuine anomaly date is ``ADATE``,
    which has 2,508 distinct values across 32 years. We therefore use
@@ -16,19 +16,19 @@ The raw file (``anom5j.xls``) is a legacy CDFV2 ``.xls`` workbook with
 
 Column glossary (from the NCEI documentation, with our corrections):
 
-* ``VER``      — record format version (5.0 for this file)
-* ``EDATE``    — **catalog entry date** (not the anomaly date — see above)
-* ``ADATE``    — **actual anomaly date** (UTC) ← used as the event timestamp
-* ``BIRD``     — spacecraft identifier (some have a leading ``@``)
-* ``STIMEU``   — universal time of the event (HHMM; ``9999`` = missing)
-* ``DUR``      — duration
-* ``STIMEL``   — local time of the event
-* ``ORBIT``    — orbit-type code (G, C, I, …)
-* ``NS``       — N/S hemisphere flag for latitude
-* ``LAT/LON``  — sub-satellite position
-* ``ATYPE``    — anomaly type
-* ``ADIAG``    — anomaly diagnosis (ESD / ECEMP / SEU / RFI / SDC / UNK)
-* ``ACOMMENT`` — free-text comment
+* ``VER``      - record format version (5.0 for this file)
+* ``EDATE``    - **catalog entry date** (not the anomaly date - see above)
+* ``ADATE``    - **actual anomaly date** (UTC) ← used as the event timestamp
+* ``BIRD``     - spacecraft identifier (some have a leading ``@``)
+* ``STIMEU``   - universal time of the event (HHMM; ``9999`` = missing)
+* ``DUR``      - duration
+* ``STIMEL``   - local time of the event
+* ``ORBIT``    - orbit-type code (G, C, I, …)
+* ``NS``       - N/S hemisphere flag for latitude
+* ``LAT/LON``  - sub-satellite position
+* ``ATYPE``    - anomaly type
+* ``ADIAG``    - anomaly diagnosis (ESD / ECEMP / SEU / RFI / SDC / UNK)
+* ``ACOMMENT`` - free-text comment
 """
 
 from __future__ import annotations

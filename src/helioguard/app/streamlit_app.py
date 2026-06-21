@@ -9,11 +9,11 @@ The app loads the serialised pipeline produced in section 11 of the
 notebook (``mlartifacts/helioguard_pipeline.joblib``) and lets a user
 obtain a calibrated next-day anomaly probability in one of two modes:
 
-* **Historical date** — pick a day inside the OMNI coverage window; the
+* **Historical date** - pick a day inside the OMNI coverage window; the
   app builds the exact same daily feature vector the model was trained
   on (via :class:`helioguard.features.FeaturePipeline`) and scores it.
   This is the rigorous path.
-* **What-if scenario** — set the daily-mean solar-wind drivers with
+* **What-if scenario** - set the daily-mean solar-wind drivers with
   sliders; the app fills each driver's lag / rolling columns with the
   chosen value and lets the fitted imputer fill the rest with training
   medians. This is an approximation, clearly labelled as such, useful
@@ -69,7 +69,7 @@ def load_bundle() -> dict:
 
 @st.cache_data
 def score_probability(_bundle: dict, feature_row: pd.DataFrame) -> float:
-    """Run a single feature row through model + calibrator → probability.
+    """Run a single feature row through model + calibrator -> probability.
 
     The leading underscore on ``_bundle`` tells Streamlit not to try to
     hash the (unhashable) fitted estimators.
@@ -144,14 +144,14 @@ def historical_feature_row(_bundle: dict, date: pd.Timestamp) -> pd.DataFrame | 
 def decide(p: float, margin: float) -> tuple[str, str]:
     """Map a probability to a decision string + colour, given the margin."""
     if abs(p - 0.5) < margin:
-        return "ABSTAIN — low confidence", "#9e9e9e"
+        return "ABSTAIN - low confidence", "#9e9e9e"
     if p >= 0.5:
-        return "ALERT — elevated anomaly risk", "#d32f2f"
-    return "NO ALERT — low anomaly risk", "#388e3c"
+        return "ALERT - elevated anomaly risk", "#d32f2f"
+    return "NO ALERT - low anomaly risk", "#388e3c"
 
 
 def probability_gauge(p: float, margin: float) -> go.Figure:
-    """A 0–1 gauge with the abstention band shaded around 0.5."""
+    """A 0-1 gauge with the abstention band shaded around 0.5."""
     fig = go.Figure(
         go.Indicator(
             mode="gauge+number",
@@ -182,7 +182,7 @@ def main() -> None:
     st.caption(
         "Calibrated next-day satellite-anomaly risk from solar-wind state. "
         "Model: a calibrated tree ensemble selected on validation, "
-        "evaluated on a locked 1992–1994 test fold."
+        "evaluated on a locked 1992-1994 test fold."
     )
 
     bundle = load_bundle()
@@ -242,7 +242,7 @@ def main() -> None:
 
     c1, c2, c3 = st.columns(3)
     c1.metric("Probability", f"{p:.1%}")
-    c2.metric("Confidence |p−0.5|", f"{abs(p - 0.5):.3f}")
+    c2.metric("Confidence |p-0.5|", f"{abs(p - 0.5):.3f}")
     c3.metric("Abstention margin", f"{margin:.3f}")
 
     st.markdown(

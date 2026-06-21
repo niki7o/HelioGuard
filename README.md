@@ -35,14 +35,14 @@ data-mines until it finds a flattering ROC curve.
 
 | ID  | Hypothesis | Test | Test fold |
 |-----|------------|------|-----------|
-| H₁  | Southward IMF $B_z$ with elevated solar-wind speed raises next-day anomaly odds | Logistic regression coefficients + likelihood-ratio test against intercept-only | train |
-| H₂  | ESD anomalies cluster on storm main phase; ECEMP on recovery phase | $\chi^2$ test of independence on (storm phase $\times$ diagnosis) | train |
-| H₃  | A small unsupervised regime set adds information beyond Kp alone | Likelihood-ratio test of K-means cluster dummies added to a Kp-only logit | train |
+| H1  | Southward IMF $B_z$ with elevated solar-wind speed raises next-day anomaly odds | Logistic regression coefficients + likelihood-ratio test against intercept-only | train |
+| H2  | ESD anomalies cluster on storm main phase; ECEMP on recovery phase | $\chi^2$ test of independence on (storm phase $\times$ diagnosis) | train |
+| H3  | A small unsupervised regime set adds information beyond Kp alone | Likelihood-ratio test of K-means cluster dummies added to a Kp-only logit | train |
 
-H₃ is phrased deliberately as *no additive linear improvement*, not
+H3 is phrased deliberately as *no additive linear improvement*, not
 *statistical independence*. A non-significant LR test means clusters
 carry no linear contribution beyond Kp; it does **not** mean clusters
-and the label are independent — the Pearson-$\approx 0$-vs-independence
+and the label are independent - the Pearson-$\approx 0$-vs-independence
 trap flagged in my Data Science exam critique.
 
 ## Data sources
@@ -52,8 +52,8 @@ at daily resolution:
 
 | Source | Type | Provider | Coverage | Size |
 |--------|------|----------|----------|------|
-| OMNI2 hourly solar wind, IMF, Kp, Dst, F10.7, AE | Numerical time series | NASA SPDF | 1974–1994 (project window) | ≈ 60 MB |
-| NCEI Spacecraft Anomalies (`anom5j.xls`) | Event catalogue | NOAA NCEI | 1963–1994 (5 033 events) | ≈ 2.6 MB |
+| OMNI2 hourly solar wind, IMF, Kp, Dst, F10.7, AE | Numerical time series | NASA SPDF | 1974-1994 (project window) | ~ 60 MB |
+| NCEI Spacecraft Anomalies (`anom5j.xls`) | Event catalogue | NOAA NCEI | 1963-1994 (5 033 events) | ~ 2.6 MB |
 
 **Locked test set.** Days 1992-01-01 to 1994-09-11 are held out before
 any analysis. They are touched exactly once, in §10 of the notebook.
@@ -68,8 +68,7 @@ catalogued ESD, ECEMP, or SEU event on that day.
 helioguard/
 │
 ├── notebooks/
-│   ├── helioguard.ipynb        ← main report — narrative + math + figures
-│   └── 00_data_audit.ipynb     ← earlier audit notebook, kept for provenance
+│   └── helioguard.ipynb        ← main report: narrative + math + figures
 │
 ├── src/helioguard/             ← all analysis logic (notebook orchestrates only)
 │   ├── config.py               ← paths, OMNI column spec, fill values, seed
@@ -83,8 +82,7 @@ helioguard/
 │   └── tracking.py             ← MLflow (SQLite backend) setup helper
 │
 ├── scripts/
-│   ├── build_notebook.py       ← regenerates notebooks/helioguard.ipynb deterministically
-│   └── build_notebook_00.py    ← regenerates the audit notebook
+│   └── build_notebook.py       ← regenerates notebooks/helioguard.ipynb deterministically
 │
 ├── data/
 │   ├── raw/                    ← gitignored, DVC-tracked: OMNI .dat + NCEI .xls
@@ -113,7 +111,7 @@ cd HelioGuard
 python -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt
 
-# 3. Download the raw data (idempotent, ≈ 60 MB)
+# 3. Download the raw data (idempotent, ~ 60 MB)
 python -m helioguard.data.download
 
 # 4. Regenerate the notebook from its build script and execute it
@@ -151,8 +149,8 @@ Total runtime end-to-end is under five minutes on a modern laptop
 | Regression block | OLS, Ridge, Lasso, ElasticNet, Polynomial+Ridge, RANSAC on a daily-min-Dst target (in the spirit of Burton 1975) |
 | Classification block | Persistence and climatology baselines; calibrated logistic regression; SVM (RBF), Random Forest, Gradient Boosting compared by chronological 5-fold TimeSeriesSplit ROC-AUC and validation TSS |
 | Unsupervised | PCA(3) + Isomap(2); K-means++, Agglomerative-Ward, DBSCAN compared by silhouette and pos-rate spread |
-| Calibration | Platt scaling, isotonic regression, split conformal — reliability diagram, Brier, ECE |
-| Selective prediction | $\lvert p - 0.5 \rvert$ confidence margin swept to produce a risk–coverage curve on the locked test fold |
+| Calibration | Platt scaling, isotonic regression, split conformal - reliability diagram, Brier, ECE |
+| Selective prediction | $\lvert p - 0.5 \rvert$ confidence margin swept to produce a risk-coverage curve on the locked test fold |
 | Tracking | MLflow with SQLite backend; final pipeline serialised with joblib |
 
 ## Key results
@@ -161,15 +159,15 @@ The task is a genuine **next-day** forecast: features from the
 solar-wind state up to the end of day *T* predict whether day *T+1*
 has an environmental anomaly.
 
-**Locked 1992–1994 test fold (default threshold 0.5):**
+**Locked 1992-1994 test fold (default threshold 0.5):**
 
 | Model | TSS | ROC-AUC | Brier | ECE |
 |-------|-----|---------|-------|-----|
-| persistence | **0.374** | — | 0.093 | 0.093 |
+| persistence | **0.374** | - | 0.093 | 0.093 |
 | climatology | 0.000 | 0.500 | 0.086 | 0.108 |
 | RandomForest + isotonic | 0.161 | **0.682** | 0.106 | 0.129 |
 
-**Accuracy is a trap, and the tuned threshold does not transfer** —
+**Accuracy is a trap, and the tuned threshold does not transfer** -
 same model, three operating points on the locked test fold:
 
 | Operating point | Accuracy | Recall | Precision | TSS |
@@ -181,7 +179,7 @@ same model, three operating points on the locked test fold:
 The headline findings:
 
 1. **Accuracy is meaningless here.** A model that never alerts scores
-   91.9 % accuracy — higher than the trained model. Accuracy is
+   91.9 % accuracy - higher than the trained model. Accuracy is
    maximised by doing nothing, so it is the wrong objective.
 2. **Threshold tuning overfits validation.** Lowering the threshold to
    the validation-optimal t\* = 0.12 buys very high recall (89 %) but,
@@ -192,23 +190,23 @@ The headline findings:
 3. **The model ranks weakly but honestly** (ROC-AUC 0.682 vs 0.5
    random) and its probabilities are calibrated (ECE drops from ~0.14
    raw to ~0.10 after Platt/isotonic). **Persistence (TSS 0.374) beats
-   it** because anomaly days cluster temporally — but persistence cannot
+   it** because anomaly days cluster temporally - but persistence cannot
    produce a probability or abstain, which the calibrated model can.
 
-This modest result — below persistence on raw skill, but calibrated and
-honest — *is* the contribution: OMNI-only daily inputs support
+This modest result - below persistence on raw skill, but calibrated and
+honest - *is* the contribution: OMNI-only daily inputs support
 calibrated next-day probabilities, not a high-skill forecast. See §12
 of the notebook for the full "honest null" discussion.
 
 ### Figures
 
-| Calibration (validation fold) | Risk–coverage (locked test fold) |
+| Calibration (validation fold) | Risk-coverage (locked test fold) |
 |---|---|
-| ![Reliability diagram](reports/figures/reliability_val.png) | ![Risk–coverage curve](reports/figures/risk_coverage_locked_test.png) |
+| ![Reliability diagram](reports/figures/reliability_val.png) | ![Risk-coverage curve](reports/figures/risk_coverage_locked_test.png) |
 
 The reliability diagram (left) compares the raw model output against
-Platt, isotonic, and split-conformal recalibration — the closer to the
-diagonal, the better calibrated. The risk–coverage curve (right) shows
+Platt, isotonic, and split-conformal recalibration - the closer to the
+diagonal, the better calibrated. The risk-coverage curve (right) shows
 TSS on the covered subset as the abstention margin is swept; the red
 marker is the data-selected operating point $m^\*$. The curve is nearly
 flat, which is the honest reading: selective prediction recovers little
@@ -217,12 +215,12 @@ on OMNI-only inputs at daily resolution.
 ## References
 
 1. Bloomfield, D. S. et al. (2012). Toward Reliable Benchmarking of Solar Flare Forecasting Methods. *Astrophysical Journal Letters*, 747, L41.
-2. Burton, R. K., McPherron, R. L., & Russell, C. T. (1975). An empirical relationship between interplanetary conditions and Dst. *Journal of Geophysical Research*, 80(31), 4204–4214.
+2. Burton, R. K., McPherron, R. L., & Russell, C. T. (1975). An empirical relationship between interplanetary conditions and Dst. *Journal of Geophysical Research*, 80(31), 4204-4214.
 3. Camporeale, E., & Berger, T. (2025). The Status and Future of Operational Space Weather Forecasting. *Space Weather*, 23.
 4. Figueroa Herrera Acevedo, M., & Sierra Porta, D. (2025). Geomagnetic disturbances and grid vulnerability. *PLOS ONE*, 20(7), e0327716. doi:10.1371/journal.pone.0327716
 5. Rodriguez, J. et al. (2025). Solar Wind and Magnetospheric Conditions for Satellite Anomalies Attributed to Shallow Internal Charging. *Space Weather*, 23. doi:10.1029/2024SW004112
 6. Angryk, R. et al. (2020). Multivariate time series dataset for space weather data analytics. *Scientific Data*, 7, 227.
-7. Vovk, V., Gammerman, A., & Shafer, G. (2005). *Algorithmic Learning in a Random World*. Springer. — split conformal prediction.
+7. Vovk, V., Gammerman, A., & Shafer, G. (2005). *Algorithmic Learning in a Random World*. Springer. - split conformal prediction.
 8. NASA OMNI documentation: https://omniweb.gsfc.nasa.gov/html/ow_data.html
 9. NOAA NCEI Spacecraft Anomalies: https://www.ngdc.noaa.gov/stp/space-weather/satellite-data/
 

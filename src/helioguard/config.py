@@ -28,7 +28,7 @@ NCEI_ANOMALY_URL: str = (
     "https://www.ngdc.noaa.gov/stp/space-weather/satellite-data/"
     "spacecraft-anomalies/data/anom5j.xls"
 )
-"""NOAA NCEI Spacecraft Anomalies database — bulk Excel file (~2.6 MB)
+"""NOAA NCEI Spacecraft Anomalies database - bulk Excel file (~2.6 MB)
 covering 5,033 cataloged on-orbit anomalies."""
 
 OMNI2_COLUMNS: list[str] = [

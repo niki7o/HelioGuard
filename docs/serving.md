@@ -21,7 +21,7 @@ day of OMNI driver inputs.
 
 The imputer + scaler are the same ones from `helioguard.features.FeaturePipeline`
 that were fitted at training time, so re-fitting is not needed (and
-not allowed — it would re-introduce the leakage the project was built
+not allowed - it would re-introduce the leakage the project was built
 to avoid).
 
 ## Minimal serving snippet
@@ -47,7 +47,7 @@ pipe.imputer_ = bundle["imputer"]
 pipe.scaler_ = bundle["scaler"]
 pipe.feature_names_ = bundle["feature_names"]
 
-# Synthesise a tiny daily_labels frame for the dates you want to score —
+# Synthesise a tiny daily_labels frame for the dates you want to score -
 # the labels here are only used for index alignment; their values are
 # ignored by the scoring code.
 dates = pd.date_range("2024-06-01", "2024-06-30", freq="D")
@@ -81,9 +81,9 @@ decision = np.where(abstain, "ABSTAIN",
                     np.where(p_cal >= 0.5, "ALERT", "NO ALERT"))
 ```
 
-On the 1992–1994 locked test fold the selected margin is small
-(`m* ≈ 0.05`) and coverage stays near 100 %, because the risk-coverage
-curve is nearly flat — confident predictions are only marginally more
+On the 1992-1994 locked test fold the selected margin is small
+(`m* ~ 0.05`) and coverage stays near 100 %, because the risk-coverage
+curve is nearly flat - confident predictions are only marginally more
 skillful than the full set. That is the honest operational reading:
 selective prediction does not buy much here. The mechanism is in place
 and the threshold is data-selected; the curve simply does not reward
@@ -91,7 +91,7 @@ abstention strongly on this data.
 
 ## MLflow registry
 
-§11 of the notebook **registers the model automatically** — it calls
+§11 of the notebook **registers the model automatically** - it calls
 `mlflow.sklearn.log_model(..., registered_model_name="helioguard-anomaly")`
 and then sets the `@staging` alias on the new version. Browse it in the
 UI with:
@@ -114,7 +114,7 @@ estimator = mlflow.sklearn.load_model(model_uri)
 
 Note that the registered MLflow model is the **raw sklearn estimator
 only**. The calibrator, scaler, imputer, feature-name list, and the
-selected abstention margin live in the joblib bundle — load both and
+selected abstention margin live in the joblib bundle - load both and
 combine them as shown in the snippet above. The bundle is the
 single-file source of truth for serving; the registry entry exists for
 versioning and stage management.

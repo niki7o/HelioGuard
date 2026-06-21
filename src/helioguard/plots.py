@@ -1,6 +1,6 @@
 """Plot helpers for the HelioGuard master notebook.
 
-These are pure formatting wrappers around matplotlib — kept out of the
+These are pure formatting wrappers around matplotlib - kept out of the
 notebook so the narrative reads cleanly. None of them save to disk:
 the notebook owns the save decisions.
 """
@@ -28,7 +28,7 @@ def reliability_diagram(
     y_true
         Binary ground truth.
     probas
-        Mapping ``label -> predicted probabilities`` — typically the
+        Mapping ``label -> predicted probabilities`` - typically the
         ``{"raw": ..., "platt": ..., "isotonic": ..., "conformal": ...}``
         comparison from §9 of the notebook.
     """
@@ -61,7 +61,7 @@ def risk_coverage_plot(
     score: str = "tss",
     ax: plt.Axes | None = None,
     label: str | None = None,
-    title: str = "Risk–coverage curve",
+    title: str = "Risk-coverage curve",
 ) -> plt.Axes:
     """Plot the score-on-covered-subset as we sweep the abstention margin."""
     coverage, score_arr, _ = risk_coverage_curve(y_true, p, score=score)

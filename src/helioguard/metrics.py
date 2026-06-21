@@ -3,17 +3,17 @@ Scoring metrics for HelioGuard.
 
 We add space-weather conventions on top of the sklearn defaults:
 
-* :func:`tss`  — True Skill Statistic (a.k.a. Peirce Skill Score) =
+* :func:`tss`  - True Skill Statistic (a.k.a. Peirce Skill Score) =
   ``TPR - FPR``. Range ``[-1, 1]``. Unlike accuracy, TSS is insensitive
   to class imbalance and is the headline metric in operational
   geomagnetic-storm forecasting.
-* :func:`hss`  — Heidke Skill Score = ``2(TP·TN - FP·FN) / ((TP+FN)(FN+TN) + (TP+FP)(FP+TN))``.
+* :func:`hss`  - Heidke Skill Score = ``2(TP·TN - FP·FN) / ((TP+FN)(FN+TN) + (TP+FP)(FP+TN))``.
   Scores agreement against the climatological random baseline.
-* :func:`brier_score` — mean squared error of the predicted probability
+* :func:`brier_score` - mean squared error of the predicted probability
   against the 0/1 outcome. Lower is better; perfect = 0.
-* :func:`expected_calibration_error` — weighted gap between predicted
+* :func:`expected_calibration_error` - weighted gap between predicted
   confidence and observed accuracy across equal-width probability bins.
-* :func:`reliability_bins` — the bin-by-bin (confidence, accuracy, count)
+* :func:`reliability_bins` - the bin-by-bin (confidence, accuracy, count)
   used to draw the reliability diagram and to compute ECE.
 """
 

@@ -8,7 +8,7 @@ Design notes
   re-run, which matters for DVC and for development iteration.
 * OMNI files are organised one per calendar year (``omni2_YYYY.dat``).
   We mirror that on disk.
-* All network calls have a timeout and a clear error message — the worst
+* All network calls have a timeout and a clear error message - the worst
   thing a downloader can do is hang silently.
 
 Run as a module::
@@ -76,7 +76,7 @@ def download_omni(
     raw_dir: Path = RAW_DIR,
 ) -> list[Path]:
     """Download a range of OMNI2 years. Errors on individual years do not
-    stop the rest — we log and continue, returning the successful paths."""
+    stop the rest - we log and continue, returning the successful paths."""
     out: list[Path] = []
     for y in years:
         try:
@@ -107,7 +107,7 @@ def _build_parser() -> argparse.ArgumentParser:
         type=int,
         nargs="+",
         default=list(DEFAULT_YEARS),
-        help="OMNI years to fetch (default: 1985–1997 inclusive).",
+        help="OMNI years to fetch (default: 1985-1997 inclusive).",
     )
     p.add_argument(
         "--skip-omni", action="store_true", help="Skip OMNI download."

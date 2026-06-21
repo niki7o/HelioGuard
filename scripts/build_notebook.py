@@ -1,4 +1,4 @@
-"""Build notebooks/helioguard.ipynb — the master single-notebook deliverable.
+"""Build notebooks/helioguard.ipynb - the master single-notebook deliverable.
 
 Run from the project root::
 
@@ -89,14 +89,14 @@ jump straight to whichever section interests them.
 | **6. Regression and logistic baselines** | OLS, Ridge, Lasso, ElasticNet, RANSAC, Polynomial; persistence and climatology | Skip to the supervised stack |
 | **7. Supervised models** | SVM, Random Forest, Gradient Boosting with chronological CV | See only the winner |
 | **8. Unsupervised regimes** | PCA, Isomap; K-means++, Hierarchical, DBSCAN | Skip to calibration |
-| **9. Calibration** | Platt vs. isotonic vs. split conformal — reliability diagram, Brier, ECE | — |
-| **10. Selective prediction and locked test** | Risk–coverage curve; the only section that touches the test fold | — |
-| **11. MLflow registry** | Serialise and register the final pipeline | — |
-| **12. Limitations and the honest null** | What the numbers actually mean | — |
-| **13. References** | — | — |
+| **9. Calibration** | Platt vs. isotonic vs. split conformal - reliability diagram, Brier, ECE | - |
+| **10. Selective prediction and locked test** | Risk-coverage curve; the only section that touches the test fold | - |
+| **11. MLflow registry** | Serialise and register the final pipeline | - |
+| **12. Limitations and the honest null** | What the numbers actually mean | - |
+| **13. References** | - | - |
 
 **Reproducibility.** All reusable logic lives in `src/helioguard/`.
-This notebook only orchestrates and narrates — it does not contain
+This notebook only orchestrates and narrates - it does not contain
 analysis algorithms. The notebook itself is regenerated deterministically
 from `scripts/build_notebook.py`, so a reviewer can read the build
 script as Python rather than diffing JSON.
@@ -119,15 +119,15 @@ resolution.
 
 | Source | Type | Provider | Coverage | Size |
 |---|---|---|---|---|
-| OMNI2 hourly | Numerical time series of solar wind, IMF, Kp, Dst, F10.7, AE | NASA SPDF | 1974–1994 (project window) | ≈ 60 MB |
-| NCEI Spacecraft Anomalies (`anom5j.xls`) | Event catalogue of 5 033 on-orbit anomalies with diagnosis (ESD, ECEMP, SEU, RFI, SDC, UNK) | NOAA NCEI | 1963–1994 | ≈ 2.6 MB |
+| OMNI2 hourly | Numerical time series of solar wind, IMF, Kp, Dst, F10.7, AE | NASA SPDF | 1974-1994 (project window) | ~ 60 MB |
+| NCEI Spacecraft Anomalies (`anom5j.xls`) | Event catalogue of 5 033 on-orbit anomalies with diagnosis (ESD, ECEMP, SEU, RFI, SDC, UNK) | NOAA NCEI | 1963-1994 | ~ 2.6 MB |
 
 The OMNI2 archive (King & Papitashvili 2005) is the canonical
 upstream of every operational geomagnetic-storm forecaster; the NCEI
 spacecraft-anomaly catalogue is the largest publicly available
 ground-truth set for on-orbit charging and SEU events. The two have
 been individually studied for decades, but their joined daily-resolved
-form is underused in published ML work — most prior studies use one
+form is underused in published ML work - most prior studies use one
 or the other, not both.
 
 ### 1.2 The daily binary target
@@ -177,8 +177,8 @@ This section loads OMNI2 hourly data and the NCEI anomaly catalogue,
 fuses them into a single daily panel, and **locks a future-year test
 fold before anything else happens**. The locked rows will not be
 touched again until §10. Doing this before any analysis means no
-downstream choice — feature scaling, model selection, calibrator
-fitting — can accidentally see the test distribution.
+downstream choice - feature scaling, model selection, calibrator
+fitting - can accidentally see the test distribution.
 
 ### 2.2 Chronological split
 
@@ -209,7 +209,7 @@ daily_labels = daily_anomaly_counts(ncei, only_environmental=True, fill_calendar
 print(f'OMNI hourly rows : {len(omni):>8,}')
 print(f'NCEI events      : {len(ncei):>8,}')
 print(f'Daily label panel: {len(daily_labels):>8,}  '
-      f'({daily_labels.index.min().date()} → {daily_labels.index.max().date()})')
+      f'({daily_labels.index.min().date()} -> {daily_labels.index.max().date()})')
 """),
     code("""TRAIN_END = pd.Timestamp('1989-12-31')
 VAL_END   = pd.Timestamp('1991-12-31')
@@ -246,7 +246,7 @@ follow:
 
 1. **OMNI coverage.** The physical drivers we want to use ($B_z$,
    $v_{sw}$, $n_p$, Kp, Dst, F10.7, AE, ap) must have usable hourly
-   coverage in the training window — gaps would propagate through the
+   coverage in the training window - gaps would propagate through the
    lag features into spurious imputed values.
 2. **Class balance.** The positive rate determines which evaluation
    metrics are meaningful. Accuracy on a 10 %-positive class is
@@ -283,34 +283,34 @@ joined.groupby('kp_bin', observed=True)['any_environmental'].agg(['mean', 'size'
 
 The three hypotheses below were stated before any model was trained.
 Pre-stating them protects this project from the *garden of forking
-paths* — there is no opportunity to rationalise a result after the
+paths* - there is no opportunity to rationalise a result after the
 fact by retro-fitting the question.
 
 | ID | Hypothesis | Test | Decision criterion |
 |----|------------|------|--------------------|
-| H₁ | Southward IMF $B_z$ with elevated solar-wind speed raises next-day anomaly odds | Logistic regression coefficients + likelihood-ratio test against intercept-only | LR $p < 0.05$ |
-| H₂ | ESD anomalies cluster on storm main phase; ECEMP on recovery phase | $\\chi^2$ test of independence on (storm phase $\\times$ diagnosis) | $\\chi^2$ $p < 0.05$ |
-| H₃ | A small unsupervised regime set adds information beyond Kp alone | LR test of K-means cluster dummies added to a Kp-only logit | LR $p < 0.05$ for any $k \\in \\{3,4,5,6\\}$ |
+| H1 | Southward IMF $B_z$ with elevated solar-wind speed raises next-day anomaly odds | Logistic regression coefficients + likelihood-ratio test against intercept-only | LR $p < 0.05$ |
+| H2 | ESD anomalies cluster on storm main phase; ECEMP on recovery phase | $\\chi^2$ test of independence on (storm phase $\\times$ diagnosis) | $\\chi^2$ $p < 0.05$ |
+| H3 | A small unsupervised regime set adds information beyond Kp alone | LR test of K-means cluster dummies added to a Kp-only logit | LR $p < 0.05$ for any $k \\in \\{3,4,5,6\\}$ |
 
 All three tests are run on the train fold; the validation and test
 folds are not consulted.
 
-### 4.1 Mechanism behind H₁
+### 4.1 Mechanism behind H1
 
 Southward IMF plus fast wind drives dayside magnetic reconnection,
 magnetospheric convection, ring-current build-up, and substorm
 injection of keV electrons into the inner magnetosphere. Those
 electrons cause surface charging on dielectric materials, which
 manifests as ESD events on geostationary spacecraft. The expected
-sign of the $B_z$ coefficient is **negative** (more southward → higher
+sign of the $B_z$ coefficient is **negative** (more southward -> higher
 odds); the expected sign of the speed coefficient is **positive**.
 
-### 4.2 Mechanism behind H₂
+### 4.2 Mechanism behind H2
 
 The two charging classes have different timescales. ESD (surface
 charging) is driven by substorm-injected keV electrons during the
-**main phase**, which is short (hours) and intense. ECEMP — the NCEI
-diagnosis code for internal / deep-dielectric charging — is driven by
+**main phase**, which is short (hours) and intense. ECEMP - the NCEI
+diagnosis code for internal / deep-dielectric charging - is driven by
 penetrating MeV "killer" electrons that take days to build up in the
 outer radiation belt during the long **recovery phase**. We therefore
 expect the two diagnoses to peak in *different* storm phases.
@@ -318,17 +318,17 @@ expect the two diagnoses to peak in *different* storm phases.
 A storm "phase" here is a deliberately crude proxy derived from Dst:
 the **main phase** is taken as $\\text{Dst} \\leq -30$ nT with Dst still
 falling, **recovery** as $\\text{Dst} \\leq -30$ nT with Dst rising. The
-$-30$ nT cut is permissive — Gonzalez et al. (1994) reserve "moderate"
-for $\\text{Dst} < -50$ nT and "intense" for $< -100$ nT — so this flags
+$-30$ nT cut is permissive - Gonzalez et al. (1994) reserve "moderate"
+for $\\text{Dst} < -50$ nT and "intense" for $< -100$ nT - so this flags
 weak activity too. It is a phase *indicator*, not a storm definition,
 and is justified only by needing a coarse main-vs-recovery split.
 
-### 4.3 Caveat on H₃ wording
+### 4.3 Caveat on H3 wording
 
-A non-significant likelihood ratio for H₃ means cluster dummies add
+A non-significant likelihood ratio for H3 means cluster dummies add
 no *additive linear* improvement to a logit that already includes Kp.
 It does **not** mean clusters and the label are statistically
-independent — that is the stronger Pearson-$\\approx 0$-vs-independence
+independent - that is the stronger Pearson-$\\approx 0$-vs-independence
 trap flagged in my Data Science exam critique. The LR formulation is
 chosen precisely to avoid making that conflation.
 """),
@@ -340,7 +340,7 @@ h1 = (
     daily_labels.loc[train_idx, ['any_environmental']]
     .join(omni_d, how='inner').dropna()
 )
-# Shift label by -1 day → "next day's outcome".
+# Shift label by -1 day -> "next day's outcome".
 h1['y_next'] = h1['any_environmental'].shift(-1)
 h1 = h1.dropna()
 X_h1 = h1[['Bz_gsm', 'flow_speed']].values
@@ -354,14 +354,14 @@ LR = 2 * len(y_h1) * (ll_null - ll_full)
 p_LR = 1 - stats.chi2.cdf(LR, df=2)
 
 print('H1  Bz_gsm  coef = {:+.3f}   flow_speed  coef = {:+.5f}'.format(*mod.coef_[0]))
-print(f'H1  LR statistic  = {LR:.1f}   p ≈ {p_LR:.2e}   (df=2)')
+print(f'H1  LR statistic  = {LR:.1f}   p ~ {p_LR:.2e}   (df=2)')
 """),
-    code("""# --- H2: storm phase × diagnosis on the train fold ------------------
+    code("""# --- H2: storm phase x diagnosis on the train fold ------------------
 ncei_train = ncei[(ncei.index >= train_idx.min()) & (ncei.index <= TRAIN_END)]
 omni_phase = omni_train_local[['Dst']].copy()
 from helioguard.features import _storm_phase
 phase = _storm_phase(omni_phase['Dst'])
-# Aggregate to daily — a day is `main` if any hour was main.
+# Aggregate to daily - a day is `main` if any hour was main.
 phase_daily = phase.resample('1D').max().idxmax(axis=1).rename('phase')
 
 ev = (
@@ -374,7 +374,7 @@ ctab = pd.crosstab(ev['ADIAG'].values, ev['phase'].values,
                    rownames=['ADIAG'], colnames=['phase'])
 chi2, p_chi, dof, _ = stats.chi2_contingency(ctab)
 print(ctab)
-print(f'\\nH2  chi2 = {chi2:.1f}  dof = {dof}  p ≈ {p_chi:.2e}')
+print(f'\\nH2  chi2 = {chi2:.1f}  dof = {dof}  p ~ {p_chi:.2e}')
 """),
     code("""# --- H3: do K-means regimes add anything beyond Kp? -----------------
 from sklearn.cluster import KMeans
@@ -467,7 +467,7 @@ non-negotiable skill floors.
 
 ### 6.1 Regression: predicting daily-minimum Dst
 
-The regression target is the **daily minimum of Dst** — the depth of
+The regression target is the **daily minimum of Dst** - the depth of
 the ring current on that day. Predicting ring-current intensity from
 solar-wind drivers follows the lineage of Burton et al. (1975), whose
 coupling function related $\\mathrm{d}\\text{Dst}^\\*/\\mathrm{d}t$ to the
@@ -476,7 +476,7 @@ formulation; we adapt the idea to a daily-minimum-Dst regression on
 lagged drivers, which is continuous and physically meaningful (more
 negative = stronger storm). It is used instead of the daily anomaly
 *count* because the count is mostly $0$ or $1$ on a sub-10 % positive
-class — too sparse for a robust regressor like RANSAC to find a valid
+class - too sparse for a robust regressor like RANSAC to find a valid
 consensus set.
 
 Six regressors are compared on the val fold:
@@ -503,13 +503,13 @@ before any data-driven model is interesting:
 
 The third baseline is a **calibrated logistic regression** using
 `CalibratedClassifierCV` with isotonic recalibration on a 5-fold
-chronological CV — the simplest model that can actually output
+chronological CV - the simplest model that can actually output
 calibrated probabilities.
 """),
     code("""# ----- Regression block: predict daily-min Dst from lagged drivers --
 # Why Dst-min and not the anomaly count? The count target is mostly 0/1
 # and too sparse for robust regressors like RANSAC. Daily-min Dst is the
-# classical Burton et al. (1975) regression target — continuous, physical,
+# classical Burton et al. (1975) regression target - continuous, physical,
 # and well-explained by lagged solar-wind drivers. Demonstrating OLS /
 # Ridge / Lasso / ElasticNet / RANSAC on this clean target is a better
 # showcase of regression mechanics; the binary anomaly task gets its
@@ -531,7 +531,7 @@ omni_val_local.index = omni_val_local.index.tz_convert(None)
 dst_val = omni_val_local[['Dst']].resample('1D').min().rename(columns={'Dst': 'dst_min'})
 
 # Use lag-only columns of drivers OTHER than Dst itself (otherwise we just
-# regress Dst on its own lags — true but uninteresting).
+# regress Dst on its own lags - true but uninteresting).
 reg_features = [c for c in X_train.columns
                 if c.startswith(('Bz_gsm_lag', 'flow_speed_lag',
                                  'proton_density_lag', 'flow_pressure_lag'))]
@@ -558,7 +558,7 @@ regressors = {
         estimator=LinearRegression(),
         random_state=RANDOM_STATE,
         min_samples=max(50, len(reg_features) + 1),
-        residual_threshold=20.0,  # nT — generous since Dst ranges to -589
+        residual_threshold=20.0,  # nT - generous since Dst ranges to -589
         max_trials=200,
     ),
 }
@@ -625,7 +625,7 @@ baseline:
 
 Model selection uses a chronological 5-fold `TimeSeriesSplit` over
 the **train fold only**. The validation fold is held out of the CV
-and used **once** to pick the headline model by validation TSS — this
+and used **once** to pick the headline model by validation TSS - this
 mirrors the operational decision a forecaster actually makes.
 
 MLflow autologging is enabled (`mlflow.sklearn.autolog`); each fit
@@ -645,7 +645,7 @@ tscv = TimeSeriesSplit(n_splits=5)
 # class_weight='balanced' tells SVM and the forest to up-weight the rare
 # positive class, so they are less inclined to collapse to "predict no
 # anomaly". GradientBoosting has no class_weight argument in scikit-learn,
-# so it stays unweighted — we let it compete on equal footing.
+# so it stays unweighted - we let it compete on equal footing.
 models = {
     'SVM (RBF)':         SVC(C=1.0, gamma='scale', probability=True,
                              class_weight='balanced', random_state=RANDOM_STATE),
@@ -675,7 +675,7 @@ for name, m in models.items():
 results_sup = pd.DataFrame(rows).round(3)
 results_sup
 """),
-    code("""# Pick the best by validation TSS — that becomes the headline model.
+    code("""# Pick the best by validation TSS - that becomes the headline model.
 best_name = results_sup.set_index('model')['val TSS'].idxmax()
 best_model = models[best_name]
 print(f'Headline model: {best_name}')
@@ -712,7 +712,7 @@ Two diagnostics are reported per clusterer: the **silhouette score**
 on the PCA(3) projection (cluster cohesion vs. separation), and the
 **pos-rate spread** (the range between the most- and least-active
 cluster's empirical anomaly rate). A large pos-rate spread is the
-operational evidence for H₃.
+operational evidence for H3.
 """),
     code("""from sklearn.decomposition import PCA
 from sklearn.manifold import Isomap
@@ -760,7 +760,7 @@ for name, lab in [('K-means++', km.labels_),
 pd.DataFrame(cluster_table).round(3)
 """),
     md("""**Reading the table.** `pos_rate_spread` is the empirical
-analogue of the H₃ LR test from §4: the larger the gap between the
+analogue of the H3 LR test from §4: the larger the gap between the
 most- and least-active cluster's positive rate, the more information
 the regime label carries. A spread of $\\approx 0$ would mean the
 cluster identity is irrelevant; a spread comparable to the marginal
@@ -771,7 +771,7 @@ base rate ($\\approx 0.10$) is meaningful.
     md("""---
 ## 9. Probability Calibration
 
-A model with high ROC-AUC can still be **miscalibrated** — its
+A model with high ROC-AUC can still be **miscalibrated** - its
 probability outputs may not match empirical frequencies. For decision
 support, calibration is at least as important as discrimination: a
 threshold of $0.8$ should mean "this happens roughly 80 % of the
@@ -822,7 +822,7 @@ p_val_platt = platt.predict_proba(p_val_raw.reshape(-1, 1))[:, 1]
 # Isotonic
 iso_cal = IsotonicRegression(out_of_bounds='clip').fit(p_cal_raw, y_cal)
 p_val_iso = iso_cal.transform(p_val_raw)
-# Split conformal (for binary) — see Vovk; quantile of nonconformity 1 - p_true
+# Split conformal (for binary) - see Vovk; quantile of nonconformity 1 - p_true
 alpha = 0.1
 nc = 1 - np.where(y_cal == 1, p_cal_raw, 1 - p_cal_raw)
 q = np.quantile(nc, 1 - alpha, method='higher')
@@ -842,7 +842,7 @@ cal_table = pd.DataFrame({
 cal_table
 """),
     code("""reliability_diagram(y_val.values, probas, n_bins=10,
-                     title=f'Reliability — {best_name} on val fold')
+                     title=f'Reliability - {best_name} on val fold')
 plt.tight_layout()
 rel_path = FIGURES_DIR / 'reliability_val.png'
 plt.savefig(rel_path, dpi=140, bbox_inches='tight'); plt.show()
@@ -857,12 +857,12 @@ This is the **only** section of the notebook that touches the locked
 test fold. Two questions are answered here:
 
 1. Does the chosen calibrator hold up out-of-sample, on the
-   1992–1994 window that was never seen at training time?
-2. Does **selective prediction** — allowing the model to abstain on
-   low-confidence inputs — recover materially better operating
+   1992-1994 window that was never seen at training time?
+2. Does **selective prediction** - allowing the model to abstain on
+   low-confidence inputs - recover materially better operating
    performance on the covered subset?
 
-### 10.1 Confidence and the risk–coverage curve
+### 10.1 Confidence and the risk-coverage curve
 
 Confidence for a binary probabilistic classifier is taken as
 $\\text{conf}_i = \\lvert p_i - 0.5 \\rvert$. As an abstention margin
@@ -873,12 +873,12 @@ $$\\text{TSS}(m) = \\text{TSS}\\big( y_i,\\, \\mathbb{1}[p_i \\geq 0.5] \\;:\\; 
 
 plotted against $\\text{coverage}(m) = \\Pr(\\text{conf}_i \\geq m)$.
 A monotonically increasing curve says that confident predictions are
-indeed more accurate — selective prediction is *useful*. A flat
+indeed more accurate - selective prediction is *useful*. A flat
 curve says abstention buys nothing.
 
 The right deliverable for a well-calibrated rare-event model is the
 *curve*, not a single-threshold TSS, because a well-calibrated model
-on a sub-10 % positive class will almost never cross $0.5$ — the
+on a sub-10 % positive class will almost never cross $0.5$ - the
 threshold $0.5$ is the wrong place to evaluate it.
 """),
     code("""# Final pipeline: fit raw_model on ALL of train, calibrate with isotonic
@@ -904,7 +904,7 @@ yhat_test    = (p_test >= t_star).astype(int)   # tuned operating point
 yhat_test_05 = (p_test >= 0.5).astype(int)       # naive 0.5 for comparison
 print(f'Validation-tuned threshold t* = {t_star:.3f}  (vs naive 0.5)')
 
-# Persistence baseline on the SAME test fold — apples-to-apples.
+# Persistence baseline on the SAME test fold - apples-to-apples.
 pers_test = (
     daily_labels['any_environmental'].astype(int)
     .reindex(X_test.index).fillna(0).astype(int).values
@@ -952,13 +952,13 @@ on the *validation* fold to maximise TSS, and the trivial
 Two honest lessons fall out:
 
 1. **Accuracy is the wrong objective.** "Always say no" scores ~92 %
-   accuracy — higher than the trained model — because the positive
+   accuracy - higher than the trained model - because the positive
    class is rare. A model optimised for accuracy would simply never
    raise an alert. That is why accuracy is reported here only to be
    dismissed.
 2. **Threshold tuning overfits the validation fold.** Lowering the
-   threshold to $t^\\*$ does buy very high recall (≈ 89 %), but on the
-   *test* fold its TSS does **not** beat the plain 0.5 threshold — the
+   threshold to $t^\\*$ does buy very high recall (~ 89 %), but on the
+   *test* fold its TSS does **not** beat the plain 0.5 threshold - the
    validation-optimal cut does not transfer. With a weak signal even a
    single scalar (the threshold) can overfit. We therefore keep 0.5 as
    the headline operating point and treat $t^\\*$ as a recall-oriented
@@ -1016,7 +1016,7 @@ print(f'  coverage at m*          : {cov_star:.1%} of test days')
 print(f'  TSS on covered subset   : {tss_star:.3f}')
 """),
     code("""ax = risk_coverage_plot(y_test.values, p_test, score='tss',
-                        label=f'{best_name} + isotonic', title='Risk–coverage (locked test)')
+                        label=f'{best_name} + isotonic', title='Risk-coverage (locked test)')
 full_tss = tss(y_test, yhat_test_05)
 ax.axhline(full_tss, color='gray', linestyle=':', label='TSS @ 100% coverage (t=0.5)')
 ax.scatter([cov_star], [tss_star], color='crimson', zorder=5, s=60,
@@ -1032,7 +1032,7 @@ print(f'saved {fig_path}')
 point $m^\\*$: the abstention margin that maximises TSS on the covered
 subset, subject to still predicting on at least half the test days.
 If the curve rises to the right of the dotted full-coverage line,
-selective prediction *works* — confident predictions are genuinely
+selective prediction *works* - confident predictions are genuinely
 more skillful, and the model recovers usable operating performance by
 declining the ambiguous days. If the curve is flat, abstention buys
 nothing and the honest conclusion is that OMNI-only inputs do not
@@ -1044,9 +1044,9 @@ in `docs/serving.md` consumes exactly this $m^\\*$ value.
     md("""---
 ## 11. Serialisation and MLflow Registry
 
-The final pipeline — the headline supervised model from §7 plus the
+The final pipeline - the headline supervised model from §7 plus the
 isotonic recalibrator from §9, alongside the fitted imputer, scaler,
-and feature-name list from §5 — is serialised as a single `joblib`
+and feature-name list from §5 - is serialised as a single `joblib`
 bundle and logged to MLflow as an artifact.
 
 The complete serving recipe (loading the bundle, transforming new
@@ -1118,26 +1118,26 @@ The contingency between the three rows of the §10 table is the
 headline finding:
 
 * **Persistence** ("tomorrow repeats today's label") is a brutally
-  strong baseline (test TSS ≈ 0.37). Environmental-anomaly
-  days cluster temporally — a multi-day storm produces several
-  anomalies in a row — so the persistence forecast gets a lot of TSS
+  strong baseline (test TSS ~ 0.37). Environmental-anomaly
+  days cluster temporally - a multi-day storm produces several
+  anomalies in a row - so the persistence forecast gets a lot of TSS
   for free. Any data-driven model has to *beat persistence*, not just
   climatology, and on raw TSS this model does **not**.
 * **The calibrated model** has materially stronger *ranking* than
-  persistence (ROC-AUC ≈ 0.68 vs an undefined AUC for a binary
+  persistence (ROC-AUC ~ 0.68 vs an undefined AUC for a binary
   forecast) and produces a probability persistence cannot. At the
-  default 0.5 threshold its next-day test TSS is ≈ 0.16 with accuracy
-  ≈ 88 %. Its probabilities are reasonably calibrated (Brier ≈ 0.09–0.11,
-  ECE ≈ 0.11–0.13).
+  default 0.5 threshold its next-day test TSS is ~ 0.16 with accuracy
+  ~ 88 %. Its probabilities are reasonably calibrated (Brier ~ 0.09-0.11,
+  ECE ~ 0.11-0.13).
 * **Accuracy is a trap, and the threshold does not transfer.** "Always
-  say no" scores ≈ 92 % accuracy — higher than the trained model —
+  say no" scores ~ 92 % accuracy - higher than the trained model -
   because the positive class is rare, so accuracy is the wrong
   objective. Lowering the threshold to the validation-optimal
-  $t^\\* ≈ 0.12$ buys very high recall (≈ 89 %) but, out-of-sample on
-  test, its TSS (≈ 0.10) does **not** beat the plain 0.5 threshold
-  (≈ 0.16): the validation-tuned cut overfits. With a weak signal even
+  $t^\\* ~ 0.12$ buys very high recall (~ 89 %) but, out-of-sample on
+  test, its TSS (~ 0.10) does **not** beat the plain 0.5 threshold
+  (~ 0.16): the validation-tuned cut overfits. With a weak signal even
   a single scalar can fail to generalise. The honest skill summary is
-  ROC-AUC ≈ 0.68 with a default-threshold TSS ≈ 0.16 — modest, and
+  ROC-AUC ~ 0.68 with a default-threshold TSS ~ 0.16 - modest, and
   below persistence.
 
 ### Why this is an "honest null" rather than a failure
@@ -1148,18 +1148,18 @@ probabilities, and does **selective prediction** recover better
 operating performance on the confident subset?* Both halves of that
 question have empirical answers in this notebook:
 
-1. **Yes, calibration is achievable** (on val, ECE drops from ≈ 0.14
-   raw to ≈ 0.10 after Platt/isotonic; same direction on test). The
+1. **Yes, calibration is achievable** (on val, ECE drops from ~ 0.14
+   raw to ~ 0.10 after Platt/isotonic; same direction on test). The
    model is genuinely usable as a probability source even though its
    TSS stays below persistence.
 2. **The risk-coverage curve is the deliverable that captures the
-   operational trade-off** — not a single TSS number. A reader should
+   operational trade-off** - not a single TSS number. A reader should
    look at where the curve starts to climb above its full-coverage
    value and decide an abstention threshold from there.
 
 If a hypothetical reader expected "ML beats persistence at threshold
 0.5", they should update toward "ML produces calibrated probabilities,
-persistence does not — and you cannot abstain with persistence".
+persistence does not - and you cannot abstain with persistence".
 
 ### Specific caveats worth naming
 
@@ -1167,8 +1167,8 @@ persistence does not — and you cannot abstain with persistence".
   inclined, polar, and elliptical spacecraft, and we collapse them all
   into one `any_environmental` label. This is a real simplification:
   **surface charging (ESD) is predominantly a geosynchronous
-  phenomenon** — it happens where substorms inject hot keV plasma near
-  GEO — whereas SEU affects low and high-inclination orbits via cosmic
+  phenomenon** - it happens where substorms inject hot keV plasma near
+  GEO - whereas SEU affects low and high-inclination orbits via cosmic
   rays and the South Atlantic Anomaly. By pooling orbits we model a
   *heterogeneous* mixture of mechanisms against a single solar-wind
   driver set, which weakens any single physical interpretation. A
@@ -1178,21 +1178,21 @@ persistence does not — and you cannot abstain with persistence".
 * **NCEI catalogue reporting drift.** The catalogue was assembled in
   the early 1990s; later events have had less time to accumulate
   retrospective entries. The train/val/test base rates fall from
-  ~11 % → 7 % → 8 %, and some of the apparent generalisation gap is
+  ~11 % -> 7 % -> 8 %, and some of the apparent generalisation gap is
   reporting drift rather than physics.
 * **H3 wording.** A non-significant cluster LR test means clusters
   carry no *additive linear* improvement beyond Kp. It does **not**
-  mean clusters and the label are statistically independent — that's
-  the stronger Pearson-≈0-vs-independence trap flagged in my Data
+  mean clusters and the label are statistically independent - that's
+  the stronger Pearson-~0-vs-independence trap flagged in my Data
   Science exam critique. The notebook scores by LR improvement
   precisely to avoid making that conflation.
 * **DBSCAN found only two clusters** with negative silhouette on the
-  PCA(3) projection — its assumption of uniform local density is a
+  PCA(3) projection - its assumption of uniform local density is a
   poor fit to OMNI's regime structure. K-means and hierarchical agree
-  (silhouette ≈ 0.27) and both produce a pos-rate spread of ~0.23,
+  (silhouette ~ 0.27) and both produce a pos-rate spread of ~0.23,
   which is the actual H3 evidence.
 * **What this project does not show.** It does not show that a
-  24-hour-ahead anomaly forecast is operationally useful — the time
+  24-hour-ahead anomaly forecast is operationally useful - the time
   horizon is set by the join cadence, not by lead-time science. A real
   operational product would also need ensemble uncertainty, not just
   calibrated point probabilities, and would need to be retrained on a
@@ -1205,16 +1205,16 @@ persistence does not — and you cannot abstain with persistence".
 ## 13. References
 
 1. Bloomfield, D. S., Higgins, P. A., McAteer, R. T. J., & Gallagher, P. T. (2012). Toward Reliable Benchmarking of Solar Flare Forecasting Methods. *Astrophysical Journal Letters*, 747, L41.
-2. Burton, R. K., McPherron, R. L., & Russell, C. T. (1975). An empirical relationship between interplanetary conditions and Dst. *Journal of Geophysical Research*, 80(31), 4204–4214.
+2. Burton, R. K., McPherron, R. L., & Russell, C. T. (1975). An empirical relationship between interplanetary conditions and Dst. *Journal of Geophysical Research*, 80(31), 4204-4214.
 3. Camporeale, E., & Berger, T. (2025). The Status and Future of Operational Space Weather Forecasting. *Space Weather*, 23.
-4. Gonzalez, W. D. et al. (1994). What is a geomagnetic storm? *Journal of Geophysical Research*, 99(A4), 5771–5792. — storm intensity thresholds (Dst < −50 moderate, < −100 intense).
+4. Gonzalez, W. D. et al. (1994). What is a geomagnetic storm? *Journal of Geophysical Research*, 99(A4), 5771-5792. - storm intensity thresholds (Dst < -50 moderate, < -100 intense).
 5. Figueroa Herrera Acevedo, M., & Sierra Porta, D. (2025). Geomagnetic disturbances and grid vulnerability. *PLOS ONE*, 20(7), e0327716. doi:10.1371/journal.pone.0327716
 6. Rodriguez, J. V., O'Brien, T. P., & Whittlesey, P. L. (2025). Solar Wind and Magnetospheric Conditions for Satellite Anomalies Attributed to Shallow Internal Charging. *Space Weather*, 23. doi:10.1029/2024SW004112
 7. Angryk, R. et al. (2020). Multivariate time series dataset for space weather data analytics. *Scientific Data*, 7, 227.
 8. King, J. H., & Papitashvili, N. E. (2005). Solar wind spatial scales in and comparisons of hourly Wind and ACE plasma and magnetic field data. *Journal of Geophysical Research*, 110, A02104.
 9. Platt, J. (1999). Probabilistic Outputs for Support Vector Machines and Comparisons to Regularized Likelihood Methods. *Advances in Large Margin Classifiers*, MIT Press.
 10. Zadrozny, B., & Elkan, C. (2002). Transforming Classifier Scores into Accurate Multiclass Probability Estimates. *KDD '02*.
-11. Vovk, V., Gammerman, A., & Shafer, G. (2005). *Algorithmic Learning in a Random World*. Springer. — split conformal prediction.
+11. Vovk, V., Gammerman, A., & Shafer, G. (2005). *Algorithmic Learning in a Random World*. Springer. - split conformal prediction.
 12. NASA OMNI documentation: https://omniweb.gsfc.nasa.gov/html/ow_data.html
 13. NOAA NCEI Spacecraft Anomalies: https://www.ncei.noaa.gov/products/satellite-anomalies
 

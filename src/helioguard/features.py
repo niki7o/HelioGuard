@@ -1,5 +1,5 @@
 """
-Leakage-safe feature engineering for the HelioGuard hourly→daily pipeline.
+Leakage-safe feature engineering for the HelioGuard hourly->daily pipeline.
 
 Two design rules drive this module:
 
@@ -7,7 +7,7 @@ Two design rules drive this module:
    history (means, std-devs for scaling, imputation medians) is computed
    on the training fold *only*; the fitted object is then applied to
    validation / test folds. The :class:`FeaturePipeline` class enforces
-   this — there is no per-row API that could accidentally look across
+   this - there is no per-row API that could accidentally look across
    the split.
 2. **Past-only windows.** Every rolling / lag operation uses pandas
    semantics that look strictly backwards in time (``closed='left'`` for
@@ -102,7 +102,7 @@ def _hourly_to_daily(hourly: pd.DataFrame) -> pd.DataFrame:
 
     Each lag/roll column already encodes a temporal window, so we
     summarise the 24 hourly values per day with their mean. Storm-phase
-    dummies are summarised with their *max* — a day touched by main
+    dummies are summarised with their *max* - a day touched by main
     phase is a main-phase day, even if it was quiet at the other 23 h.
     """
     if hourly.empty:
@@ -120,7 +120,7 @@ def _hourly_to_daily(hourly: pd.DataFrame) -> pd.DataFrame:
 
 
 def _cyclic_doy(index: pd.DatetimeIndex) -> pd.DataFrame:
-    """Cyclic encoding of day-of-year — captures seasonal effects (e.g. the
+    """Cyclic encoding of day-of-year - captures seasonal effects (e.g. the
     equinoctial peak in geomagnetic activity) without imposing a step at
     the year boundary."""
     doy = index.dayofyear.values
@@ -147,7 +147,7 @@ class FeaturePipeline:
 
     ``horizon_days`` sets the forecast lead time: with the default of 1,
     the features of day T are aligned to the anomaly label of day T+1,
-    so the model is a genuine *next-day* forecast — the solar-wind state
+    so the model is a genuine *next-day* forecast - the solar-wind state
     up to the end of day T predicts whether day T+1 has an anomaly. The
     feature windows are past-only, so there is a full day of lead time
     between the latest input and the predicted day.
@@ -164,7 +164,7 @@ class FeaturePipeline:
     feature_names_: list[str] = field(default_factory=list, init=False)
 
     def _build_daily(self, omni: pd.DataFrame) -> pd.DataFrame:
-        """OMNI hourly → engineered daily features (no scaling yet)."""
+        """OMNI hourly -> engineered daily features (no scaling yet)."""
         hourly = _hourly_lag_and_roll(omni, self.drivers, self.lags, self.rolls)
         if "Dst" in omni.columns:
             hourly = hourly.join(_storm_phase(omni["Dst"]), how="left")

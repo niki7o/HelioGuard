@@ -2,7 +2,7 @@
 Parse NASA OMNI2 hourly fixed-width records into a tidy ``DataFrame``.
 
 The OMNI2 format is documented at
-https://spdf.gsfc.nasa.gov/pub/data/omni/low_res_omni/omni2.text — 55 numeric
+https://spdf.gsfc.nasa.gov/pub/data/omni/low_res_omni/omni2.text - 55 numeric
 fields per record, whitespace-delimited. Different columns use different
 "missing data" fill values (e.g. ``999.9`` for field magnitudes, ``999999.``
 for proton temperature). We translate all of them to ``NaN`` so downstream
@@ -65,7 +65,7 @@ def _apply_fill_values(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _decode_kp(df: pd.DataFrame) -> pd.DataFrame:
-    """OMNI2 stores Kp as the integer ``Kp × 10`` (so Kp 2.3 → 23). Restore
+    """OMNI2 stores Kp as the integer ``Kp x 10`` (so Kp 2.3 -> 23). Restore
     the real-valued planetary K-index in a new ``Kp_real`` column and keep
     the raw integer for traceability."""
     if "Kp" in df.columns:
@@ -112,7 +112,7 @@ def omni_coverage_report(df: pd.DataFrame) -> pd.DataFrame:
     """Return a per-column missingness report.
 
     Useful in the audit notebook to show *which* OMNI fields are actually
-    usable in our chosen window — the early OMNI years are notoriously
+    usable in our chosen window - the early OMNI years are notoriously
     sparse for plasma fields, for example.
     """
     n = len(df)

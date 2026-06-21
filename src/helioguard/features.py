@@ -130,6 +130,44 @@ def _cyclic_doy(index: pd.DatetimeIndex) -> pd.DataFrame:
     )
 
 
+def _coupling_features(omni: pd.DataFrame) -> pd.DataFrame:
+    """Physically-motivated daily drivers from solar-wind coupling theory.
+
+    These encode the same physics the Burton et al. (1975) and Newell et
+    al. (2007) coupling functions use, rather than leaving the model to
+    rediscover it from raw lags:
+
+    * ``coupling_Ey_mean`` / ``coupling_Ey_max`` - the duskward motional
+      electric field from the *southward* IMF only, E_y ~ v * B_s with
+      B_s = max(0, -B_z). Southward IMF is what reconnects at the dayside,
+      so the half-wave rectification is the key non-linearity.
+    * ``frac_southward`` - fraction of the day with B_z < 0, a proxy for
+      how sustained the driving was.
+    * ``pdyn_shock`` - the largest positive hour-to-hour jump in dynamic
+      pressure, a simple flag for an interplanetary shock arrival.
+
+    Built from the within-day hourly values, so for a next-day target
+    (day T+1) every input is observed by the end of day T.
+    """
+    out: dict[str, pd.Series] = {}
+    if "Bz_gsm" in omni.columns and "flow_speed" in omni.columns:
+        b_south = (-omni["Bz_gsm"]).clip(lower=0)        # nT, southward only
+        e_y = omni["flow_speed"] * b_south * 1e-3        # ~ mV/m
+        out["coupling_Ey_mean"] = e_y.resample("1D").mean()
+        out["coupling_Ey_max"] = e_y.resample("1D").max()
+        out["frac_southward"] = (omni["Bz_gsm"] < 0).resample("1D").mean()
+    if "flow_pressure" in omni.columns:
+        d_p = omni["flow_pressure"].diff().clip(lower=0)
+        out["pdyn_shock"] = d_p.resample("1D").max()
+    if not out:
+        return pd.DataFrame(index=omni.resample("1D").mean().index)
+    daily = pd.DataFrame(out)
+    if daily.index.tz is not None:
+        daily.index = daily.index.tz_convert(None)
+    daily.index.name = "date"
+    return daily
+
+
 @dataclass
 class FeaturePipeline:
     """Train-only-fitted feature pipeline.
@@ -158,6 +196,7 @@ class FeaturePipeline:
     rolls: tuple[int, ...] = DEFAULT_ROLL_HOURS
     label_col: str = "any_environmental"
     horizon_days: int = 1
+    include_coupling: bool = False
 
     imputer_: SimpleImputer | None = field(default=None, init=False)
     scaler_: StandardScaler | None = field(default=None, init=False)
@@ -169,6 +208,8 @@ class FeaturePipeline:
         if "Dst" in omni.columns:
             hourly = hourly.join(_storm_phase(omni["Dst"]), how="left")
         daily = _hourly_to_daily(hourly)
+        if self.include_coupling:
+            daily = daily.join(_coupling_features(omni), how="left")
         daily = daily.join(_cyclic_doy(daily.index), how="left")
         return daily
 

@@ -81,6 +81,7 @@ jump straight to whichever section interests them.
 
 | Section | Purpose | Skip if you want to |
 |---|---|---|
+| **Mathematical foundations** | The theory each method rests on, derived | You only want the empirics |
 | **1. Data sources** | What is OMNI2, what is the NCEI anomaly catalogue, why fuse them | Trust the dataset |
 | **2. Ingest and locked split** | Build the daily panel, lock the future test fold | Trust the split |
 | **3. Exploratory analysis** | Coverage, class balance, base-rate stratification by Kp | Skip directly to hypotheses |
@@ -106,6 +107,114 @@ script as Python rather than diffing JSON.
 * The headline operational metric is the **True Skill Statistic** $\\text{TSS} = \\text{TPR} - \\text{FPR}$ (Bloomfield et al. 2012), reported alongside HSS, ROC-AUC, PR-AUC, Brier, and ECE.
 * All scaling, imputation, hyperparameter choices, and clustering fits use the **training fold only**. The validation fold is used to choose the headline model and the decision threshold; the locked test fold is touched exactly once, in §10.
 * Failing to reject a null hypothesis is reported as such, not as a "negative" result.
+"""),
+
+    # =================================================================
+    md(r"""---
+## Mathematical foundations
+
+This section states the theory the rest of the notebook applies, so the
+methods later are calls to ideas defined here rather than black boxes.
+
+### Logistic regression as maximum likelihood
+
+The binary model is $P(y=1 \mid x) = \sigma(w^\top x + b)$ with the
+logistic link $\sigma(z) = 1/(1+e^{-z})$. Fitting maximises the
+Bernoulli log-likelihood, equivalently it minimises the average
+log-loss
+
+$$\mathcal{L}(w) = -\frac{1}{N}\sum_{i=1}^{N}\Big[y_i \log p_i + (1-y_i)\log(1-p_i)\Big], \qquad p_i = \sigma(w^\top x_i + b).$$
+
+Its gradient has the clean residual form $\nabla_w \mathcal{L} = \frac{1}{N}\sum_i (p_i - y_i)\,x_i$,
+and because $\mathcal{L}$ is convex in $w$ the optimum is unique. This
+is the baseline classifier in section 6.
+
+### Regularisation
+
+Ridge, Lasso and Elastic-Net add a penalty to the loss:
+
+$$\text{Ridge: } \lambda\lVert w\rVert_2^2, \qquad
+\text{Lasso: } \lambda\lVert w\rVert_1, \qquad
+\text{Elastic-Net: } \lambda\big(\alpha\lVert w\rVert_1 + (1-\alpha)\lVert w\rVert_2^2\big).$$
+
+The $\ell_1$ term is non-differentiable at zero; its subgradient drives
+coefficients exactly to zero (soft-thresholding), which is why Lasso
+selects features. The $\ell_2$ term shrinks smoothly and stabilises
+collinear designs. Both trade a little bias for lower variance.
+
+### Skill scores from the confusion matrix
+
+With true/false positives/negatives $(TP, FP, FN, TN)$ define
+$\text{TPR}=\tfrac{TP}{TP+FN}$ and $\text{FPR}=\tfrac{FP}{FP+TN}$. The
+**True Skill Statistic** is
+
+$$\text{TSS} = \text{TPR} - \text{FPR}.$$
+
+Crucially TPR and FPR are each conditioned on the *true* class, so they
+are computed within a row of the confusion matrix and do **not** depend
+on the class prevalence $\pi = P(y=1)$. TSS is therefore invariant to
+base rate, whereas accuracy $\frac{TP+TN}{N} = \pi\,\text{TPR} + (1-\pi)(1-\text{FPR})$
+is dominated by the majority class when $\pi$ is small. This is the
+formal reason accuracy is the wrong objective for our $\sim 8\%$
+positive task. The **Heidke Skill Score** measures agreement above
+chance,
+
+$$\text{HSS} = \frac{2(TP\cdot TN - FP\cdot FN)}{(TP+FN)(FN+TN) + (TP+FP)(FP+TN)}.$$
+
+### Brier score and calibration
+
+For probabilistic forecasts the Brier score is the mean squared error
+$\text{BS} = \frac{1}{N}\sum_i (p_i - y_i)^2$. Murphy's (1973)
+decomposition splits it into
+
+$$\text{BS} = \underbrace{\mathbb{E}[(p - \bar{y}_{\text{bin}})^2]}_{\text{reliability}} - \underbrace{\mathbb{E}[(\bar{y}_{\text{bin}} - \bar{y})^2]}_{\text{resolution}} + \underbrace{\bar{y}(1-\bar{y})}_{\text{uncertainty}},$$
+
+where $\bar{y}_{\text{bin}}$ is the empirical positive rate among
+samples sharing a predicted probability. **Calibration** drives the
+reliability term to zero: a well-calibrated model has predicted
+probabilities equal to observed frequencies. **Platt scaling** fits a
+sigmoid $\sigma(a\,s + b)$ to the scores $s$ by maximum likelihood;
+**isotonic regression** fits any non-decreasing map minimising
+$\sum_i (g(s_i) - y_i)^2$ via pool-adjacent-violators. Expected
+Calibration Error, $\text{ECE} = \sum_b \frac{n_b}{N}\lvert\text{conf}_b - \text{acc}_b\rvert$,
+summarises the reliability gap in $b$ bins.
+
+### Split conformal prediction
+
+Split conformal turns any score into a set with a finite-sample
+coverage guarantee. On an exchangeable calibration set of size $n$ with
+non-conformity scores $r_i$, take the quantile
+$\hat{q} = \lceil (n+1)(1-\alpha)\rceil$-th smallest $r_i$. Then for a
+fresh point the prediction set $C(x) = \{y : r(x,y) \le \hat{q}\}$ obeys
+
+$$1-\alpha \;\le\; P\big(y \in C(x)\big) \;\le\; 1-\alpha + \frac{1}{n+1}.$$
+
+The lower bound holds for **any** underlying model, with no
+distributional assumption beyond exchangeability - which is exactly the
+honesty property we want from an uncertainty statement (section 9).
+
+### Principal Component Analysis
+
+Centre the design matrix and form the covariance
+$\Sigma = \frac{1}{N}X^\top X$. Its eigendecomposition
+$\Sigma = V\Lambda V^\top$ gives orthonormal directions $v_k$ (columns
+of $V$) ordered by eigenvalue $\lambda_k$; projecting onto the top $k$
+maximises retained variance, and the explained-variance ratio is
+$\lambda_k / \sum_j \lambda_j$. Isomap (section 8) generalises this to a
+non-linear manifold by replacing Euclidean distance with geodesic
+distance on a neighbour graph before the same spectral step.
+
+### Why a random forest
+
+Averaging $B$ de-correlated trees reduces variance. If each tree has
+variance $\sigma^2$ and pairwise correlation $\rho$, the ensemble
+variance is
+
+$$\rho\,\sigma^2 + \frac{1-\rho}{B}\,\sigma^2 \xrightarrow{B\to\infty} \rho\,\sigma^2.$$
+
+Random feature subsampling at each split lowers $\rho$, so the forest
+keeps the low bias of deep trees while cutting their variance - the
+reason it is the headline model in section 7.
 """),
 
     # =================================================================
@@ -1215,8 +1324,9 @@ persistence does not - and you cannot abstain with persistence".
 9. Platt, J. (1999). Probabilistic Outputs for Support Vector Machines and Comparisons to Regularized Likelihood Methods. *Advances in Large Margin Classifiers*, MIT Press.
 10. Zadrozny, B., & Elkan, C. (2002). Transforming Classifier Scores into Accurate Multiclass Probability Estimates. *KDD '02*.
 11. Vovk, V., Gammerman, A., & Shafer, G. (2005). *Algorithmic Learning in a Random World*. Springer. - split conformal prediction.
-12. NASA OMNI documentation: https://omniweb.gsfc.nasa.gov/html/ow_data.html
-13. NOAA NCEI Spacecraft Anomalies: https://www.ncei.noaa.gov/products/satellite-anomalies
+12. Murphy, A. H. (1973). A new vector partition of the probability score. *Journal of Applied Meteorology*, 12(4), 595-600. - reliability/resolution/uncertainty decomposition of the Brier score.
+13. NASA OMNI documentation: https://omniweb.gsfc.nasa.gov/html/ow_data.html
+14. NOAA NCEI Spacecraft Anomalies: https://www.ncei.noaa.gov/products/satellite-anomalies
 
 Code licence: MIT. Raw data is U.S. Government public domain
 (NASA / NOAA).

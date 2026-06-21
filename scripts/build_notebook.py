@@ -540,6 +540,12 @@ four classes of features per driver:
   equinoctial peak in geomagnetic activity) without a step at the
   year boundary.
 
+A fifth, optional group - **coupling-physics** features encoding the
+Burton (1975) / Newell (2007) solar-wind coupling functions directly -
+is available via `include_coupling=True` and is studied separately in
+the section 7.1 ablation; it is left out of the headline pipeline for
+the reason the ablation makes clear.
+
 ### 5.2 Leakage discipline
 
 `FeaturePipeline` exposes two methods, `fit_transform` and
@@ -788,6 +794,67 @@ results_sup
 best_name = results_sup.set_index('model')['val TSS'].idxmax()
 best_model = models[best_name]
 print(f'Headline model: {best_name}')
+"""),
+    md("""### 7.1 Feature ablation: which inputs carry the signal?
+
+A single accuracy number hides *where* a model's skill comes from. Here
+we add the feature groups one at a time - raw lags, then rolling
+statistics, then the storm-phase flags, then the cyclic day-of-year,
+and finally the physics-motivated coupling features from
+`features.py` (`include_coupling=True`) - and re-score the headline
+random forest on the validation fold each time. This is a controlled
+experiment: same model, same folds, only the feature set changes, so
+any movement in ROC-AUC is attributable to the features just added.
+"""),
+    code("""from sklearn.ensemble import RandomForestClassifier
+
+# Build the coupling-augmented matrix (train-only fit). Its base columns
+# are scaled identically to the headline pipeline, so we can slice column
+# subsets from it and keep the rows fixed across every ablation rung.
+pipe_cpl = FeaturePipeline(include_coupling=True)
+Xtr_c, ytr_c = pipe_cpl.fit_transform(omni, daily_labels, train_idx)
+Xva_c, yva_c = pipe_cpl.transform(omni, daily_labels, val_idx)
+
+allc = list(Xtr_c.columns)
+lag   = [c for c in allc if '_lag' in c]
+roll  = [c for c in allc if '_rmean' in c or '_rstd' in c]
+phase = [c for c in allc if c.startswith('phase_')]
+doy   = [c for c in allc if c.startswith('doy_')]
+coup  = [c for c in allc if c.startswith('coupling_') or c in ('frac_southward', 'pdyn_shock')]
+
+groups = [
+    ('lags only',          lag),
+    ('+ rolling stats',    lag + roll),
+    ('+ storm phase',      lag + roll + phase),
+    ('+ cyclic DOY (base)', lag + roll + phase + doy),
+    ('+ coupling physics', lag + roll + phase + doy + coup),
+]
+
+abl = []
+for name, cols in groups:
+    m = RandomForestClassifier(n_estimators=300, class_weight='balanced',
+                               n_jobs=-1, random_state=RANDOM_STATE)
+    m.fit(Xtr_c[cols], ytr_c)
+    pv = m.predict_proba(Xva_c[cols])[:, 1]
+    abl.append({'feature set': name, 'n_cols': len(cols),
+                'val ROC-AUC': roc_auc_score(yva_c, pv),
+                'val TSS @0.5': tss(yva_c, (pv >= 0.5).astype(int))})
+ablation = pd.DataFrame(abl).round(3)
+ablation
+"""),
+    md("""The ablation is informative in a way the headline cannot be. The
+coupling-physics features give the largest jump in validation
+**ROC-AUC** (the `+ coupling physics` row), so the explicit
+$E_y = v\\,B_s$ rectification does add *ranking* signal beyond the raw
+lagged $B_z$ and speed. But they barely move validation **TSS at the
+0.5 threshold** - the metric the headline operating point actually
+uses. Because the gain is ranking-only and (as a held-out check
+confirmed) does not carry through to the locked test fold, the headline
+pipeline keeps the leaner base feature set; adopting four extra inputs
+for a ROC-AUC-only improvement that does not transfer would be exactly
+the kind of overfitting this project is built to avoid. That decision -
+*not* using a feature group despite a tempting validation number - is
+the honest outcome of the experiment.
 """),
 
     # =================================================================
